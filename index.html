@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>BOBtheBAGEL</title>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=DM+Sans:wght@400;500;600;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet"/>
+
+<!-- CSS -->
+<link rel="stylesheet" href="css/base.css"/>
+<link rel="stylesheet" href="css/components.css"/>
+<link rel="stylesheet" href="css/layout.css"/>
+
+<!-- Supabase CDN (décommenter quand prêt à brancher) -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> -->
+</head>
+<body>
+<div id="app"></div>
+<div class="tw" id="toasts"></div>
+
+<script type="module">
+/* ============================================================
+   BOBtheBAGEL — index.html
+   Point d'entrée : expose window.__BOB__ et lance l'app
+   ============================================================ */
+
+// ── Imports ────────────────────────────────────────────────
+import { A, sv, CATEGORY_ICONS }  from './js/state.js';
+import { render, toast, gId, cSec, aP, oCats, gP, fD, fT, fDl, dDel, nISO, cap, setBApp } from './js/utils.js';
+import { dLog, logout, isAdmin, canAccessKitchen }   from './js/auth.js';
+import { bApp, goSel, goShop, goKit, goAdm, switchShop, sSTb, sKTb, sSCat, sRCat, sSch, toggleDark, setLang } from './js/router.js';
+
+// Modules commandes
+import {
+  sCart, qAdd, sNote, sDel, sDelT,
+  oSum, cxSum, sbO, dupeO,
+  sOS, sOC, saveComment,
+  uOD, uOT, cfV, cfR,
+  cfSRc, cfKRc,
+  stEQ, sEQ, svEQ, cxEQ,
+  tO, tKS, tRc,
+  okCf, cxCf,
+} from './js/modules/orders.js';
+
+// Modules stock
+import { uSt, tSL, tARc, sRS, sRC, sbRc, prtPDF } from './js/modules/stock.js';
+
+// Modules admin
+import {
+  sAT, sBn, svBn, clBn,
+  tAU, sNU, aU, dU,
+  tAP, sNP, aP2, tP,
+  trPh, hdPh, svPr,
+} from './js/modules/admin.js';
+
+// ── Exposition globale window.__BOB__ ──────────────────────
+// Nécessaire pour que les handlers HTML inline (onclick="...") fonctionnent
+// avec des modules ES6.
+// En production avec un vrai framework (React, Vue), ce pattern disparaît.
+window.__BOB__ = {
+  // State & constants (pour cSec dans utils)
+  CATEGORY_ICONS,
+
+  // Auth
+  dLog, logout,
+
+  // Navigation
+  goSel, goShop, goKit, goAdm, switchShop,
+  sSTb, sKTb, sSCat, sRCat, sSch,
+  toggleDark, setLang,
+
+  // Commandes
+  sCart, qAdd, sNote, sDel, sDelT,
+  oSum, cxSum, sbO, dupeO,
+  sOS, sOC, saveComment,
+  uOD, uOT, cfV, cfR,
+  cfSRc, cfKRc,
+  stEQ, sEQ, svEQ, cxEQ,
+  tO, tKS, tRc,
+  okCf, cxCf,
+
+  // Stock
+  uSt, tSL, tARc, sRS, sRC, sbRc, prtPDF,
+
+  // Admin
+  sAT, sBn, svBn, clBn,
+  tAU, sNU, aU, dU,
+  tAP, sNP, aP2, tP,
+  trPh, hdPh, svPr,
+};
+
+// ── Init ───────────────────────────────────────────────────
+if (!A.del) A.del = dDel();
+
+// Injecte bApp dans utils (résout la dépendance circulaire utils ↔ router)
+// router.js appelle setBApp() à son chargement, donc c'est déjà fait ici.
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+/* ============================================================
+   BOBtheBAGEL — base.css
+   Reset · Variables · Dark mode · Animations · Utilitaires
+   ============================================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #FAFAF8;
+  color: #111;
+  min-height: 100vh;
+}
+
+input, button, select, textarea {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+}
+
+button { cursor: pointer; }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-thumb { background: #1B5E3B44; border-radius: 2px; }
+
+/* ── CSS Variables ── */
+:root {
+  --bg:    #FAFAF8;
+  --bg2:   #FFFFFF;
+  --gn:    #1B5E3B;
+  --lgn:   #E8F5EE;
+  --rd:    #E8294B;
+  --yl:    #E8B84B;
+  --or:    #E87B4B;
+  --bl:    #4B8BE8;
+  --bk:    #111111;
+  --br:    #E0EDE8;
+  --mt:    #5A7A6A;
+  --gy:    #F2F5F3;
+  --sh:    0 2px 12px rgba(0,0,0,.07);
+  --shl:   0 4px 24px rgba(0,0,0,.10);
+}
+
+body.dark {
+  --bg:    #1C1C1E;
+  --bg2:   #2A2A2C;
+  --gn:    #2ECC71;
+  --lgn:   #0D2B1A;
+  --rd:    #E8294B;
+  --yl:    #F0C060;
+  --or:    #E87B4B;
+  --bl:    #5B9BF8;
+  --bk:    #F0F0F0;
+  --br:    #3A3A3C;
+  --mt:    #8A9A8A;
+  --gy:    #242426;
+  --sh:    0 2px 12px rgba(0,0,0,.30);
+  --shl:   0 4px 24px rgba(0,0,0,.40);
+}
+
+/* ── Animations ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes sld  { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes fdi  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pls  { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.toast   { animation: sld .3s ease; }
+.fade    { animation: fdi .2s ease; }
+.pulse   { animation: pls 1.5s infinite; }
+
+/* ── Scroll horizontal sans scrollbar ── */
+.sc {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.sc::-webkit-scrollbar { display: none; }
+
+/* ── Logo ── */
+.logo { display: flex; align-items: center; line-height: 1; flex-shrink: 0; }
+.logo .b1 { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; color: var(--gn); letter-spacing: 2px; }
+.logo .th { font-family: 'Dancing Script', cursive; font-weight: 700; color: var(--rd); }
+.logo .b2 { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; color: var(--gn); letter-spacing: 2px; }
+
+/* ── Utilitaires ── */
+.dbl { opacity: .4; cursor: not-allowed !important; }
+.slbl {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: var(--mt);
+  padding: 10px 14px 3px;
+  text-transform: uppercase;
+}

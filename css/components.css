@@ -1,0 +1,292 @@
+/* ============================================================
+   BOBtheBAGEL — components.css
+   Boutons · Inputs · Cards · Badges · Toasts · Modals
+   ============================================================ */
+
+/* ── Boutons ── */
+.bgn {
+  background: var(--gn);
+  color: #fff;
+  border: none;
+  padding: 14px 22px;
+  border-radius: 10px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 15px;
+  letter-spacing: 2px;
+  min-height: 50px;
+}
+.bgn:active { opacity: .8; }
+
+.bgh {
+  background: transparent;
+  border: 1.5px solid var(--br);
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--mt);
+  font-size: 13px;
+  min-height: 40px;
+}
+
+.bsm {
+  background: transparent;
+  border: 1.5px solid var(--br);
+  padding: 7px 13px;
+  border-radius: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--bk);
+  min-height: 38px;
+}
+
+.brd {
+  background: var(--rd);
+  color: #fff;
+  border: none;
+  padding: 7px 13px;
+  border-radius: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 12px;
+  min-height: 38px;
+}
+
+/* ── Quantités (panier) ── */
+.qw { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+.qb {
+  width: 40px;
+  height: 40px;
+  background: var(--gn);
+  border: none;
+  color: #fff;
+  font-size: 22px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+.qb:active { opacity: .7; }
+
+.qi {
+  width: 56px;
+  height: 40px;
+  border: 1.5px solid var(--br);
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 8px;
+  background: var(--bg2);
+  color: var(--bk);
+  outline: none;
+}
+.qi:focus { border-color: var(--gn); }
+
+/* ── Inputs ── */
+.inf {
+  border: 1.5px solid var(--br);
+  padding: 13px 14px;
+  border-radius: 10px;
+  font-size: 15px;
+  outline: none;
+  background: var(--bg2);
+  color: var(--bk);
+  width: 100%;
+  transition: border-color .15s;
+}
+.inf:focus { border-color: var(--gn); }
+
+.taf {
+  border: 1.5px solid var(--br);
+  padding: 11px 13px;
+  border-radius: 10px;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+  background: var(--bg2);
+  color: var(--bk);
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color .15s;
+}
+.taf:focus { border-color: var(--gn); }
+
+/* ── Cards ── */
+.card {
+  border: 1px solid var(--br);
+  border-radius: 14px;
+  margin-bottom: 12px;
+  background: var(--bg2);
+  overflow: hidden;
+  box-shadow: var(--sh);
+}
+.chlb { border-left: 4px solid var(--gn); }
+
+/* ── Produits ── */
+.pr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px;
+  border-bottom: 1px solid var(--br);
+  background: var(--bg2);
+  transition: background .1s;
+}
+.pr.sel { background: var(--lgn); }
+
+.pn {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--bk);
+}
+
+.pu {
+  font-size: 11px;
+  color: var(--mt);
+  background: var(--gy);
+  padding: 2px 6px;
+  border-radius: 5px;
+  margin-left: 5px;
+}
+
+/* ── Badges / statuts ── */
+.bdg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+.bdd {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Catégories ── */
+.cath {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 4px;
+  background: var(--bg);
+}
+.cathl { flex: 1; height: 1px; background: var(--br); }
+.catht {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--gn);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.subch {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--gn);
+  padding: 9px 14px 3px;
+  background: var(--gy);
+  border-bottom: 1px solid var(--br);
+}
+
+/* ── Toasts ── */
+.tw {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.ti {
+  background: var(--gn);
+  color: #fff;
+  padding: 11px 22px;
+  border-radius: 30px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: 1px;
+  box-shadow: var(--shl);
+  white-space: nowrap;
+  max-width: 90vw;
+  text-align: center;
+}
+.ti.error { background: var(--rd); }
+.ti.warn  { background: var(--yl); color: #000; }
+
+/* ── Modals ── */
+.mo {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.mb {
+  background: var(--bg2);
+  border-radius: 18px;
+  padding: 26px;
+  max-width: 340px;
+  width: 100%;
+  text-align: center;
+  animation: fdi .2s;
+  box-shadow: var(--shl);
+}
+
+/* ── Bottom sheet ── */
+.bs {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 9998;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.bsc {
+  background: var(--bg2);
+  border-radius: 20px 20px 0 0;
+  padding: 22px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 82vh;
+  overflow-y: auto;
+  animation: slideUp .25s ease;
+}
+
+/* ── Progress bar (commande) ── */
+.pb { display: flex; align-items: center; padding: 6px 14px 8px; }
+.pd {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--br);
+  flex-shrink: 0;
+  transition: background .3s;
+}
+.pd.dn { background: var(--gn); }
+.pl { flex: 1; height: 2px; background: var(--br); transition: background .3s; }
+.pl.dn { background: var(--gn); }

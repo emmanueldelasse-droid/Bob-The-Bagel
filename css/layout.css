@@ -1,0 +1,140 @@
+/* ============================================================
+   BOBtheBAGEL — layout.css
+   Pages · Header · Tabs · Sidebar · Responsive
+   ============================================================ */
+
+/* ── Pages ── */
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.cp {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+}
+
+/* ── Header ── */
+.hdr {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--br);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+/* ── Bannière annonce ── */
+.kbanner {
+  background: var(--gn);
+  padding: 11px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Switch bar (sélection boutiques) ── */
+.swbar {
+  padding: 5px 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--br);
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  align-items: center;
+}
+.swbar::-webkit-scrollbar { display: none; }
+
+.swbtn {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 5px 13px;
+  border-radius: 20px;
+  border: 2px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-height: 32px;
+  transition: all .15s;
+  background: transparent;
+}
+
+/* ── Tabs ── */
+.tbr {
+  display: flex;
+  border-bottom: 2px solid var(--br);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg2);
+}
+.tbr::-webkit-scrollbar { display: none; }
+
+.tb {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 13px 14px;
+  border: none;
+  background: transparent;
+  color: var(--mt);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+  min-height: 46px;
+  flex-shrink: 0;
+  transition: color .15s;
+}
+.tb.on { color: var(--gn); border-bottom-color: var(--gn); }
+
+/* Tabs cuisine (fond sombre) */
+.tb.dk { color: #444; }
+.tb.dk.on { color: var(--yl); border-bottom-color: var(--yl); }
+
+/* ── Contenu scrollable ── */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Responsive Desktop ── */
+@media (min-width: 768px) {
+  .cp { max-width: 480px; margin: 0 auto; }
+  .mb { max-width: 380px; }
+}
+
+@media (min-width: 1024px) {
+  /* Layout sidebar desktop */
+  .mw {
+    display: flex;
+    min-height: 100vh;
+  }
+  .sn {
+    width: 200px;
+    border-right: 2px solid var(--br);
+    flex-shrink: 0;
+    background: var(--bg2);
+  }
+  .mc {
+    flex: 1;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+}
