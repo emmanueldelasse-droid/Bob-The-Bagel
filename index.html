@@ -47,6 +47,18 @@ import {
 // Modules stock
 import { uSt, tSL, tARc, sRS, sRC, sbRc, prtPDF } from './js/modules/stock.js';
 
+// Modules calendrier
+import {
+  openCalForm, closeCalForm, saveEvent, editEvent, deleteEvent,
+  setCalField, toggleCalShop, setCalFilter, setCalTab, setEventStatus,
+  setCalColorMode, calNavPrev, calNavNext, calNavToday,
+  addCheckItem, toggleCheckItem, removeCheckItem,
+  duplicateEvent, exportEventPDF,
+  setCalColorMode, calNavPrev, calNavNext, calNavToday,
+  addCheckItem, toggleCheckItem, removeCheckItem,
+  duplicateEvent, exportEventPDF,
+} from './js/modules/calendar.js';
+
 // Modules chat
 import {
   selectConv, sendMessage, setChatInput, setChatPriority,
@@ -89,6 +101,15 @@ window.__BOB__ = {
 
   // Stock
   uSt, tSL, tARc, sRS, sRC, sbRc, prtPDF,
+
+  // Calendrier
+  openCalForm, closeCalForm, saveEvent, editEvent, deleteEvent,
+  setCalField, toggleCalShop, setCalFilter, setCalTab, setEventStatus,
+  setCalColorMode, calNavPrev, calNavNext, calNavToday,
+  addCheckItem, toggleCheckItem, removeCheckItem,
+  duplicateEvent, exportEventPDF,
+  // toggle détail événement
+  _toggleEv: (id) => { A['oEv_' + id] = !A['oEv_' + id]; import('./js/utils.js').then(({render})=>render()); },
 
   // Chat
   selectConv, sendMessage, setChatInput, setChatPriority,

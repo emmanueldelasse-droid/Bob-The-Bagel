@@ -150,6 +150,7 @@ export const A = {
   products: ld('pr', INIT_PRODUCTS.map(p => ({ ...p, active: true, price: 0 }))),
   stock:    ld('st', initStock()),
   receipts: ld('rc', []),
+  events:   ld('ev', []),            // événements calendrier
   messages: ld('msg', []),          // tous les messages
   conversations: ld('conv', [      // conversations prédéfinies
     { id: 'general', type: 'general', label: 'Général', icon: '📢' },
@@ -173,6 +174,14 @@ export const A = {
   kTab:  'orders',
   sCat:  'PAINS',
   rcCat: 'PAINS',
+
+  // Calendrier
+  calTab:       'list',
+  calFilter:    'all',
+  calForm:      null,
+  calMonth:     new Date().getMonth(),
+  calYear:      new Date().getFullYear(),
+  calColorMode: 'status',   // 'status' | 'shop'
 
   // Chat
   chatConvId: 'general',  // conversation active
@@ -213,7 +222,7 @@ export function sv(k, v) {
 }
 
 export function clearAll() {
-  ['dk','lg','us','or','ks','pr','st','rc','sl','al','cl','bn','sn','msg','conv'].forEach(k => {
+  ['dk','lg','us','or','ks','pr','st','rc','sl','al','cl','bn','sn','msg','conv','ev'].forEach(k => {
     localStorage.removeItem(k);
   });
 }

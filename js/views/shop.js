@@ -8,6 +8,7 @@ import { aP, oCats, gP, fD, fT, fDl } from '../utils.js';
 import { isAdmin } from '../auth.js';
 import { bSum } from './modals.js';
 import { bChat, chatBadge } from './chat.js';
+import { bCalendar, calBadge, calDashboardWidget } from './calendar.js';
 import { totalUnread } from '../modules/chat.js';
 import { getLowStock, stockLevel } from '../modules/stock.js';
 
@@ -171,6 +172,9 @@ function tabOrder() {
 
   return `
     <div style="padding-bottom:72px;max-width:720px;width:100%;margin:0 auto">
+
+      <!-- Encart calendrier -->
+      ${calDashboardWidget()}
 
       <!-- Barre recherche + livraison -->
       <div style="
@@ -566,6 +570,7 @@ export function bShop() {
     { id: 'stock',   label: 'Mon stock',  icon: '📦' },
     { id: 'profile', label: 'Profil',     icon: '👤' },
     { id: 'chat',    label: 'Messages',   icon: '💬' },
+    { id: 'calendar',label: 'Calendrier', icon: '📅' },
   ];
 
   let content = '';
@@ -575,6 +580,7 @@ export function bShop() {
     case 'stock':    content = tabStock();   break;
     case 'profile':  content = tabProfile(); break;
     case 'chat':     content = bChat();      break;
+    case 'calendar': content = bCalendar(); break;
     default:         content = tabOrder();
   }
 
@@ -604,7 +610,7 @@ export function bShop() {
               transition:color .12s,border-color .12s;
               display:flex;align-items:center;gap:5px
             "
-          >${t.icon} ${t.label}${t.id === 'chat' ? chatBadge() : ''}</button>
+          >${t.icon} ${t.label}${t.id === 'chat' ? chatBadge() : t.id === 'calendar' ? calBadge() : ''}</button>
         `).join('')}
       </div>
 

@@ -12,6 +12,7 @@ import { bShop }         from './views/shop.js';
 import { bKitchen }      from './views/kitchen.js';
 import { bAdmin }        from './views/admin.js';
 import { bChat }         from './views/chat.js';
+import { bCalendar }     from './views/calendar.js';
 import { bCfm }          from './views/modals.js';
 
 // ── Router principal ───────────────────────────────────────
@@ -28,6 +29,7 @@ export function bApp() {
     case 'kitchen': content = bKitchen(); break;
     case 'admin':   content = bAdmin();   break;
     case 'chat':    content = bChat();    break;
+    case 'calendar': content = bCalendar(); break;
     default:        content = bLogin();
   }
 

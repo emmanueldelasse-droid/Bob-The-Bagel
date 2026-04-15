@@ -6,6 +6,7 @@ import { A, ORDER_STATUSES } from '../state.js';
 import { aP, oCats, gP, fD, fT, fDl } from '../utils.js';
 import { isAdmin } from '../auth.js';
 import { bChat, chatBadge } from './chat.js';
+import { bCalendar, calBadge, calDashboardWidget } from './calendar.js';
 import { totalUnread } from '../modules/chat.js';
 import { getLowStock } from '../modules/stock.js';
 
@@ -285,6 +286,7 @@ export function bKitchen() {
     { id: 'stock',    label: 'Stock',      icon: '📦' },
     { id: 'receipts', label: 'Réceptions', icon: '🚛' },
     { id: 'chat',     label: 'Messages',   icon: '💬' },
+    { id: 'calendar', label: 'Calendrier', icon: '📅' },
   ];
 
   let content = '';
@@ -293,6 +295,7 @@ export function bKitchen() {
     case 'stock':    content = tabKStock();    break;
     case 'receipts': content = tabKReceipts(); break;
     case 'chat':     content = bChat();        break;
+    case 'calendar': content = bCalendar();   break;
     default:         content = tabKOrders();
   }
 
