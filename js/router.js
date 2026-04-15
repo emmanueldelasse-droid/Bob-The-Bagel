@@ -11,6 +11,7 @@ import { bSelect }       from './views/select.js';
 import { bShop }         from './views/shop.js';
 import { bKitchen }      from './views/kitchen.js';
 import { bAdmin }        from './views/admin.js';
+import { bChat }         from './views/chat.js';
 import { bCfm }          from './views/modals.js';
 
 // ── Router principal ───────────────────────────────────────
@@ -26,6 +27,7 @@ export function bApp() {
     case 'shop':    content = bShop();    break;
     case 'kitchen': content = bKitchen(); break;
     case 'admin':   content = bAdmin();   break;
+    case 'chat':    content = bChat();    break;
     default:        content = bLogin();
   }
 

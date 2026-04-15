@@ -47,6 +47,12 @@ import {
 // Modules stock
 import { uSt, tSL, tARc, sRS, sRC, sbRc, prtPDF } from './js/modules/stock.js';
 
+// Modules chat
+import {
+  selectConv, sendMessage, setChatInput, setChatPriority,
+  getOrCreateOrderConv, deleteMessage,
+} from './js/modules/chat.js';
+
 // Modules admin
 import {
   sAT, sBn, svBn, clBn,
@@ -83,6 +89,10 @@ window.__BOB__ = {
 
   // Stock
   uSt, tSL, tARc, sRS, sRC, sbRc, prtPDF,
+
+  // Chat
+  selectConv, sendMessage, setChatInput, setChatPriority,
+  getOrCreateOrderConv, deleteMessage,
 
   // Admin
   sAT, sBn, svBn, clBn,

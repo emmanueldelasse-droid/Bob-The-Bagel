@@ -7,6 +7,8 @@ import { A, SHOPS, ORDER_STATUSES } from '../state.js';
 import { aP, oCats, gP, fD, fT, fDl } from '../utils.js';
 import { isAdmin } from '../auth.js';
 import { bSum } from './modals.js';
+import { bChat, chatBadge } from './chat.js';
+import { totalUnread } from '../modules/chat.js';
 import { getLowStock, stockLevel } from '../modules/stock.js';
 
 // ─────────────────────────────────────────────────────────────
@@ -559,6 +561,7 @@ export function bShop() {
     { id: 'orders',  label: 'Commandes',  icon: '📋' },
     { id: 'stock',   label: 'Mon stock',  icon: '📦' },
     { id: 'profile', label: 'Profil',     icon: '👤' },
+    { id: 'chat',    label: 'Messages',   icon: '💬' },
   ];
 
   let content = '';
@@ -567,6 +570,7 @@ export function bShop() {
     case 'orders':   content = tabOrders();  break;
     case 'stock':    content = tabStock();   break;
     case 'profile':  content = tabProfile(); break;
+    case 'chat':     content = bChat();      break;
     default:         content = tabOrder();
   }
 
@@ -596,7 +600,7 @@ export function bShop() {
               transition:color .12s,border-color .12s;
               display:flex;align-items:center;gap:5px
             "
-          >${t.icon} ${t.label}</button>
+          >${t.icon} ${t.label}${t.id === 'chat' ? chatBadge() : ''}</button>
         `).join('')}
       </div>
 

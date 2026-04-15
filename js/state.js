@@ -150,6 +150,10 @@ export const A = {
   products: ld('pr', INIT_PRODUCTS.map(p => ({ ...p, active: true, price: 0 }))),
   stock:    ld('st', initStock()),
   receipts: ld('rc', []),
+  messages: ld('msg', []),          // tous les messages
+  conversations: ld('conv', [      // conversations prédéfinies
+    { id: 'general', type: 'general', label: 'Général', icon: '📢' },
+  ]),
 
   // Logs
   sLog: ld('sl', []),
@@ -169,6 +173,10 @@ export const A = {
   kTab:  'orders',
   sCat:  'PAINS',
   rcCat: 'PAINS',
+
+  // Chat
+  chatConvId: 'general',  // conversation active
+  chatInput:  '',
 
   // Panier boutique
   cart:  {},
@@ -205,7 +213,7 @@ export function sv(k, v) {
 }
 
 export function clearAll() {
-  ['dk','lg','us','or','ks','pr','st','rc','sl','al','cl','bn','sn'].forEach(k => {
+  ['dk','lg','us','or','ks','pr','st','rc','sl','al','cl','bn','sn','msg','conv'].forEach(k => {
     localStorage.removeItem(k);
   });
 }
