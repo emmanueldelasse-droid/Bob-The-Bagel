@@ -55,33 +55,31 @@ function tabOrder() {
   return `
     <div class="pb-footer">
       <!-- Recherche + dates -->
-      <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--border);background:var(--bg2)">
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;gap:8px">
         <input
           class="input"
           placeholder="Rechercher un produit…"
           value="${A.search || ''}"
           oninput="window.__BOB__.sSch(this.value)"
+          style="height:40px"
         />
-        <div style="display:flex;gap:8px">
-          <div style="flex:1">
-            <div class="label" style="margin-bottom:4px">Date souhaitée</div>
-            <input
-              type="date"
-              class="input"
-              value="${A.del}"
-              min="${new Date().toISOString().split('T')[0]}"
-              onchange="window.__BOB__.sDel(this.value)"
-            />
-          </div>
-          <div style="width:130px">
-            <div class="label" style="margin-bottom:4px">Heure</div>
-            <input
-              type="time"
-              class="input"
-              value="${A.delT}"
-              onchange="window.__BOB__.sDelT(this.value)"
-            />
-          </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="label" style="white-space:nowrap;flex-shrink:0">Livraison</span>
+          <input
+            type="date"
+            class="input"
+            value="${A.del}"
+            min="${new Date().toISOString().split('T')[0]}"
+            onchange="window.__BOB__.sDel(this.value)"
+            style="height:36px;font-size:13px;flex:1"
+          />
+          <input
+            type="time"
+            class="input"
+            value="${A.delT}"
+            onchange="window.__BOB__.sDelT(this.value)"
+            style="height:36px;font-size:13px;width:110px;flex-shrink:0"
+          />
         </div>
       </div>
 
@@ -146,30 +144,48 @@ function productRow(p, sh) {
   const level  = sh ? stockLevel(sh.id, p.id) : 'ok';
   const stock  = sh ? (A.stock[sh.id]?.[p.id]?.qty ?? '—') : null;
 
+  const borderColor = active ? 'var(--green)' : 'var(--border)';
+  const plusBg      = active ? 'var(--green)' : 'transparent';
+  const plusColor   = active ? '#fff' : 'var(--txt)';
+  const rowBg       = active ? 'var(--lgreen)' : 'var(--bg2)';
+
   return `
-    <div class="product-row ${active ? 'active' : ''}">
-      <div style="flex:1;min-width:0">
-        <div class="product-name">${p.name}
-          ${level === 'low' ? `<span style="font-size:10px;color:var(--amber);font-weight:700;margin-left:6px">⚠ bas</span>` : ''}
+    <div style="display:flex;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border);background:${rowBg};gap:12px;transition:background .1s">
+
+      <!-- Nom -->
+      <div style="min-width:0;flex:1">
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-weight:600;font-size:14px;color:var(--txt)">${p.name}</span>
+          ${level === 'low' ? '<span style="font-size:10px;color:var(--amber);font-weight:700">⚠</span>' : ''}
         </div>
-        <div class="product-meta">
-          +${p.step} ${p.unit}
-          ${stock !== null ? ` · Stock : ${stock} ${p.unit}` : ''}
+        <div style="font-size:11px;color:var(--txt3);margin-top:1px;font-weight:500">
+          +${p.step} ${p.unit}${stock !== null ? ' · Stock : ' + stock + ' ' + p.unit : ''}
         </div>
       </div>
-      <div class="qty-wrap">
-        <button class="qty-btn" onclick="window.__BOB__.sCart('${p.id}',Math.max(0,(${qty})-${p.step}))">−</button>
+
+      <!-- Quantité inline compact -->
+      <div style="display:flex;align-items:center;border:1.5px solid ${borderColor};border-radius:8px;overflow:hidden;flex-shrink:0;transition:border-color .15s">
+        <button
+          onclick="window.__BOB__.sCart('${p.id}',Math.max(0,(${qty})-${p.step}))"
+          style="width:32px;height:34px;background:transparent;border:none;color:var(--txt);font-size:18px;line-height:1;cursor:pointer;transition:background .1s;font-weight:300"
+          onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'"
+        >−</button>
         <input
-          class="qty-val"
           type="number"
           value="${qty}"
           min="0"
           step="${p.step}"
           onchange="window.__BOB__.sCart('${p.id}',this.value)"
           oninput="window.__BOB__.sCart('${p.id}',this.value)"
+          style="width:40px;height:34px;border:none;border-left:1px solid var(--border);border-right:1px solid var(--border);text-align:center;font-size:13px;font-weight:700;background:var(--bg2);color:var(--txt);outline:none;font-family:'Space Grotesk',sans-serif;-moz-appearance:textfield"
         />
-        <button class="qty-btn" onclick="window.__BOB__.qAdd('${p.id}')">+</button>
+        <button
+          onclick="window.__BOB__.qAdd('${p.id}')"
+          style="width:32px;height:34px;background:${plusBg};border:none;color:${plusColor};font-size:18px;line-height:1;cursor:pointer;transition:all .15s;font-weight:300"
+          onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'"
+        >+</button>
       </div>
+
     </div>`;
 }
 
