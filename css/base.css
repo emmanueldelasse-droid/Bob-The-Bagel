@@ -1,6 +1,6 @@
 /* ============================================================
-   BOBtheBAGEL — base.css
-   Reset · Variables · Dark mode · Animations · Utilitaires
+   BOBtheBAGEL — base.css v2
+   Direction : Bold & Graphique · Fort contraste · Typographie claire
    ============================================================ */
 
 * {
@@ -11,92 +11,99 @@
 }
 
 body {
-  font-family: 'DM Sans', sans-serif;
-  background: #FAFAF8;
-  color: #111;
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--txt);
   min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 input, button, select, textarea {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 16px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
 }
 
 button { cursor: pointer; }
 
-/* Scrollbars */
 ::-webkit-scrollbar { width: 3px; height: 3px; }
-::-webkit-scrollbar-thumb { background: #1B5E3B44; border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: #00000020; border-radius: 2px; }
 
-/* ── CSS Variables ── */
+/* ── Variables light ── */
 :root {
-  --bg:    #FAFAF8;
-  --bg2:   #FFFFFF;
-  --gn:    #1B5E3B;
-  --lgn:   #E8F5EE;
-  --rd:    #E8294B;
-  --yl:    #E8B84B;
-  --or:    #E87B4B;
-  --bl:    #4B8BE8;
-  --bk:    #111111;
-  --br:    #E0EDE8;
-  --mt:    #5A7A6A;
-  --gy:    #F2F5F3;
-  --sh:    0 2px 12px rgba(0,0,0,.07);
-  --shl:   0 4px 24px rgba(0,0,0,.10);
+  --bg:      #F5F4F0;
+  --bg2:     #FFFFFF;
+  --bg3:     #EDECEA;
+  --txt:     #0D0D0D;
+  --txt2:    #6B6B6B;
+  --txt3:    #A8A8A8;
+  --accent:  #0D0D0D;
+  --accent2: #FFFFFF;
+  --red:     #E8294B;
+  --green:   #1A7A4A;
+  --lgreen:  #E8F5EE;
+  --amber:   #D97706;
+  --blue:    #2563EB;
+  --border:  #E2E0DC;
+  --sh:      0 1px 3px rgba(0,0,0,.07);
+  --sh2:     0 4px 20px rgba(0,0,0,.10);
+  --r:       10px;
+  --r2:      6px;
 }
 
 body.dark {
-  --bg:    #1C1C1E;
-  --bg2:   #2A2A2C;
-  --gn:    #2ECC71;
-  --lgn:   #0D2B1A;
-  --rd:    #E8294B;
-  --yl:    #F0C060;
-  --or:    #E87B4B;
-  --bl:    #5B9BF8;
-  --bk:    #F0F0F0;
-  --br:    #3A3A3C;
-  --mt:    #8A9A8A;
-  --gy:    #242426;
-  --sh:    0 2px 12px rgba(0,0,0,.30);
-  --shl:   0 4px 24px rgba(0,0,0,.40);
+  --bg:      #0D0D0D;
+  --bg2:     #161616;
+  --bg3:     #202020;
+  --txt:     #F0EEE8;
+  --txt2:    #909090;
+  --txt3:    #606060;
+  --accent:  #F0EEE8;
+  --accent2: #0D0D0D;
+  --green:   #34D399;
+  --lgreen:  #0A2018;
+  --amber:   #FCD34D;
+  --blue:    #60A5FA;
+  --border:  #262626;
+  --sh:      0 1px 3px rgba(0,0,0,.4);
+  --sh2:     0 4px 20px rgba(0,0,0,.5);
 }
 
 /* ── Animations ── */
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes sld  { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@keyframes fdi  { from { opacity: 0; } to { opacity: 1; } }
-@keyframes pls  { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
-@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes fadeUp  { from { opacity:0; transform:translateY(8px);  } to { opacity:1; transform:translateY(0);  } }
+@keyframes slideUp { from { transform:translateY(100%); opacity:0; } to { transform:translateY(0);   opacity:1; } }
+@keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(-12px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
 
-.toast   { animation: sld .3s ease; }
-.fade    { animation: fdi .2s ease; }
-.pulse   { animation: pls 1.5s infinite; }
+.fade { animation: fadeUp .18s ease both; }
 
-/* ── Scroll horizontal sans scrollbar ── */
-.sc {
-  display: flex;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-.sc::-webkit-scrollbar { display: none; }
+/* ── Scroll horizontal sans barre ── */
+.sc { display:flex; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.sc::-webkit-scrollbar { display:none; }
 
 /* ── Logo ── */
-.logo { display: flex; align-items: center; line-height: 1; flex-shrink: 0; }
-.logo .b1 { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; color: var(--gn); letter-spacing: 2px; }
-.logo .th { font-family: 'Dancing Script', cursive; font-weight: 700; color: var(--rd); }
-.logo .b2 { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; color: var(--gn); letter-spacing: 2px; }
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+  line-height: 1;
+  flex-shrink: 0;
+  user-select: none;
+}
+.logo .b1, .logo .b2 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  color: var(--txt);
+  letter-spacing: -1px;
+}
+.logo .th {
+  font-family: 'Dancing Script', cursive;
+  font-weight: 700;
+  color: var(--red);
+  font-size: .82em;
+  margin: 0 2px;
+}
 
 /* ── Utilitaires ── */
-.dbl { opacity: .4; cursor: not-allowed !important; }
-.slbl {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 900;
-  font-size: 10px;
-  letter-spacing: 4px;
-  color: var(--mt);
-  padding: 10px 14px 3px;
-  text-transform: uppercase;
-}
+.dbl     { opacity:.3; pointer-events:none; }
+.label   { font-family:'Syne',sans-serif; font-weight:700; font-size:10px; letter-spacing:2.5px; text-transform:uppercase; color:var(--txt3); }
+.truncate{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

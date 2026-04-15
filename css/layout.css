@@ -1,9 +1,9 @@
 /* ============================================================
-   BOBtheBAGEL — layout.css
+   BOBtheBAGEL — layout.css v2
    Pages · Header · Tabs · Sidebar · Responsive
    ============================================================ */
 
-/* ── Pages ── */
+/* ══ PAGES ════════════════════════════════════════════════ */
 .page {
   min-height: 100vh;
   background: var(--bg);
@@ -11,7 +11,7 @@
   flex-direction: column;
 }
 
-.cp {
+.center-page {
   min-height: 100vh;
   background: var(--bg);
   display: flex;
@@ -22,34 +22,33 @@
   position: relative;
 }
 
-/* ── Header ── */
+/* ══ HEADER ═══════════════════════════════════════════════ */
 .hdr {
-  padding: 10px 14px;
+  height: 52px;
+  padding: 0 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   background: var(--bg2);
-  border-bottom: 1px solid var(--br);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 30;
 }
 
-/* ── Bannière annonce ── */
-.kbanner {
-  background: var(--gn);
-  padding: 11px 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.hdr-kitchen {
+  background: var(--txt);
+  border-bottom-color: transparent;
 }
+.hdr-kitchen .logo .b1,
+.hdr-kitchen .logo .b2 { color: var(--bg2); }
 
-/* ── Switch bar (sélection boutiques) ── */
-.swbar {
-  padding: 5px 14px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--br);
+/* ══ SHOP CONTEXT BAR ═════════════════════════════════════ */
+.context-bar {
+  padding: 8px 14px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
   display: flex;
   gap: 6px;
   overflow-x: auto;
@@ -57,84 +56,115 @@
   -webkit-overflow-scrolling: touch;
   align-items: center;
 }
-.swbar::-webkit-scrollbar { display: none; }
+.context-bar::-webkit-scrollbar { display: none; }
 
-.swbtn {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 900;
+.context-pill {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
   font-size: 11px;
-  letter-spacing: 1px;
-  padding: 5px 13px;
+  letter-spacing: .5px;
+  padding: 5px 14px;
   border-radius: 20px;
-  border: 2px solid;
+  border: 1.5px solid;
   white-space: nowrap;
   flex-shrink: 0;
-  min-height: 32px;
-  transition: all .15s;
+  min-height: 30px;
+  transition: all .12s;
   background: transparent;
+  cursor: pointer;
 }
 
-/* ── Tabs ── */
-.tbr {
+/* ══ SHOP NAME BAR ════════════════════════════════════════ */
+.shop-bar {
+  padding: 10px 16px;
   display: flex;
-  border-bottom: 2px solid var(--br);
+  align-items: center;
+  justify-content: space-between;
+}
+.shop-bar-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+/* ══ TABS ═════════════════════════════════════════════════ */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
   overflow-x: auto;
   scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
   background: var(--bg2);
+  padding: 0 4px;
 }
-.tbr::-webkit-scrollbar { display: none; }
+.tabs::-webkit-scrollbar { display: none; }
 
-.tb {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 900;
-  font-size: 12px;
-  letter-spacing: 1px;
-  padding: 13px 14px;
+.tab {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 0 14px;
+  height: 44px;
   border: none;
   background: transparent;
-  color: var(--mt);
+  color: var(--txt3);
   cursor: pointer;
-  border-bottom: 3px solid transparent;
+  border-bottom: 2px solid transparent;
   white-space: nowrap;
-  min-height: 46px;
   flex-shrink: 0;
-  transition: color .15s;
+  transition: color .12s, border-color .12s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
-.tb.on { color: var(--gn); border-bottom-color: var(--gn); }
+.tab.on {
+  color: var(--txt);
+  border-bottom-color: var(--txt);
+}
+.tab.kitchen-tab { color: rgba(255,255,255,.5); }
+.tab.kitchen-tab.on { color: #fff; border-bottom-color: var(--amber); }
 
-/* Tabs cuisine (fond sombre) */
-.tb.dk { color: #444; }
-.tb.dk.on { color: var(--yl); border-bottom-color: var(--yl); }
-
-/* ── Contenu scrollable ── */
-.main-content {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+/* ══ BANNIÈRE ANNONCE ═════════════════════════════════════ */
+.announce-bar {
+  background: var(--txt);
+  color: var(--bg2);
+  padding: 9px 16px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  text-align: center;
 }
 
-/* ── Responsive Desktop ── */
-@media (min-width: 768px) {
-  .cp { max-width: 480px; margin: 0 auto; }
-  .mb { max-width: 380px; }
+/* ══ MAIN CONTENT ═════════════════════════════════════════ */
+.main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* ══ STICKY FOOTER ════════════════════════════════════════ */
+.sticky-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 12px 16px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  z-index: 20;
+}
+/* Espace en bas pour ne pas masquer le contenu */
+.pb-footer { padding-bottom: 76px; }
+
+/* ══ RESPONSIVE ═══════════════════════════════════════════ */
+@media (min-width: 640px) {
+  .center-page { max-width: 460px; margin: 0 auto; }
+  .modal       { max-width: 400px; }
 }
 
 @media (min-width: 1024px) {
-  /* Layout sidebar desktop */
-  .mw {
-    display: flex;
-    min-height: 100vh;
-  }
-  .sn {
-    width: 200px;
-    border-right: 2px solid var(--br);
-    flex-shrink: 0;
-    background: var(--bg2);
-  }
-  .mc {
-    flex: 1;
-    max-width: 720px;
-    margin: 0 auto;
-  }
+  .layout-desktop { display: flex; min-height: 100vh; }
+  .sidebar        { width: 220px; border-right: 1px solid var(--border); flex-shrink: 0; background: var(--bg2); }
+  .main-col       { flex: 1; max-width: 740px; margin: 0 auto; }
+  .sticky-footer  { max-width: 740px; left: 50%; transform: translateX(-50%); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
 }

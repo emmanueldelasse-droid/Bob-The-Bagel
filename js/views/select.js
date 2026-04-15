@@ -1,66 +1,66 @@
 /* ============================================================
-   BOBtheBAGEL — js/views/select.js
-   Sélection du contexte : boutique ou cuisine centrale
+   BOBtheBAGEL — views/select.js v2
    ============================================================ */
 
-import { A }       from '../state.js';
-import { SHOPS }   from '../state.js';
-import { isAdmin, canAccessKitchen } from '../auth.js';
+import { A, SHOPS } from '../state.js';
+import { canAccessKitchen } from '../auth.js';
 
 export function bSelect() {
   const u = A.cUser;
 
   return `
-    <div class="cp">
-      <div style="position:absolute;top:16px;right:16px;display:flex;gap:8px;align-items:center">
-        <button class="bgh" style="font-size:12px" onclick="window.__BOB__.toggleDark()">
-          ${A.dark ? '☀️' : '🌙'}
-        </button>
-        <button class="bgh" style="font-size:12px" onclick="window.__BOB__.logout()">
-          Déconnexion
-        </button>
+    <div class="center-page">
+      <!-- Actions top right -->
+      <div style="position:absolute;top:16px;right:16px;display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="window.__BOB__.toggleDark()" style="font-size:15px">◑</button>
+        <button class="btn btn-ghost btn-sm" onclick="window.__BOB__.logout()">Déconnexion</button>
       </div>
 
-      <div style="text-align:center;margin-bottom:32px">
-        <div style="width:60px;height:60px;border-radius:50%;background:var(--gn);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:700;margin:0 auto 14px;overflow:hidden">
-          ${u?.photo ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover">` : (u?.name?.[0] || '?')}
-        </div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;color:var(--bk);letter-spacing:1px">
-          Bonjour, ${u?.name || ''} 👋
-        </div>
-        <div style="font-size:12px;color:var(--mt);margin-top:4px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:2px">
-          ${(u?.role || '').toUpperCase()}
-        </div>
-      </div>
-
-      <div style="width:100%;max-width:340px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:11px;letter-spacing:4px;color:var(--mt);text-align:center;margin-bottom:14px">
-          CHOISIR UN ESPACE
+      <div style="width:100%;max-width:380px" class="fade">
+        <!-- User -->
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:36px">
+          <div style="width:52px;height:52px;border-radius:12px;background:var(--txt);display:flex;align-items:center;justify-content:center;color:var(--bg2);font-size:20px;font-weight:700;flex-shrink:0;overflow:hidden">
+            ${u?.photo ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover">` : (u?.name?.[0] || '?')}
+          </div>
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--txt);letter-spacing:-.3px">
+              Bonjour, ${u?.name || ''} 👋
+            </div>
+            <div class="label" style="margin-top:2px">${(u?.role || '').toUpperCase()}</div>
+          </div>
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:10px">
+        <!-- Titre -->
+        <div class="label" style="margin-bottom:12px">Choisir un espace</div>
+
+        <!-- Boutiques -->
+        <div style="display:flex;flex-direction:column;gap:8px">
           ${SHOPS.map(sh => `
             <button
               onclick="window.__BOB__.goShop('${sh.id}')"
               style="
                 background:var(--bg2);
-                border:2px solid ${sh.color};
-                border-radius:14px;
-                padding:18px 20px;
+                border:1.5px solid var(--border);
+                border-radius:var(--r);
+                padding:16px 18px;
                 display:flex;
                 align-items:center;
                 justify-content:space-between;
-                min-height:64px;
-                transition:all .15s;
+                text-align:left;
+                transition:border-color .12s, box-shadow .12s;
               "
+              onmouseover="this.style.borderColor='${sh.color}';this.style.boxShadow='0 0 0 3px ${sh.color}22'"
+              onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none'"
             >
               <div style="display:flex;align-items:center;gap:12px">
-                <div style="width:12px;height:12px;border-radius:50%;background:${sh.color};flex-shrink:0"></div>
-                <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:16px;letter-spacing:2px;color:var(--bk)">
+                <div style="width:10px;height:10px;border-radius:50%;background:${sh.color};flex-shrink:0"></div>
+                <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:-.2px;color:var(--txt)">
                   ${sh.name}
                 </span>
               </div>
-              <span style="color:var(--mt);font-size:18px">→</span>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--txt3)">
+                <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
             </button>
           `).join('')}
 
@@ -68,24 +68,25 @@ export function bSelect() {
             <button
               onclick="window.__BOB__.goKit()"
               style="
-                background:#111;
-                border:2px solid #111;
-                border-radius:14px;
-                padding:18px 20px;
+                background:var(--txt);
+                border:1.5px solid var(--txt);
+                border-radius:var(--r);
+                padding:16px 18px;
                 display:flex;
                 align-items:center;
                 justify-content:space-between;
-                min-height:64px;
                 margin-top:4px;
               "
             >
               <div style="display:flex;align-items:center;gap:12px">
-                <div style="width:12px;height:12px;border-radius:50%;background:var(--yl);flex-shrink:0"></div>
-                <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:16px;letter-spacing:2px;color:#fff">
-                  CUISINE CENTRALE
+                <div style="width:10px;height:10px;border-radius:50%;background:var(--amber);flex-shrink:0"></div>
+                <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:-.2px;color:var(--bg2)">
+                  Cuisine centrale
                 </span>
               </div>
-              <span style="color:#fff;font-size:18px">→</span>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:rgba(255,255,255,.5)">
+                <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
             </button>
           ` : ''}
         </div>
