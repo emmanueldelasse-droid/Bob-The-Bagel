@@ -1,136 +1,332 @@
 /* ============================================================
-   BOBtheBAGEL — views/shop.js v2
+   BOBtheBAGEL — views/shop.js v3
+   Réécriture complète — layout produit compact
    ============================================================ */
 
 import { A, SHOPS, ORDER_STATUSES } from '../state.js';
-import { aP, oCats, gP, fD, fT, fDl, cSec } from '../utils.js';
+import { aP, oCats, gP, fD, fT, fDl } from '../utils.js';
 import { isAdmin } from '../auth.js';
-import { bSum }   from './modals.js';
+import { bSum } from './modals.js';
 import { getLowStock, stockLevel } from '../modules/stock.js';
 
-// ── Header boutique ────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// HEADER
+// ─────────────────────────────────────────────────────────────
 function shopHeader() {
   const sh = A.selShop;
-
   return `
-    <div class="hdr">
-      <div style="display:flex;align-items:center;gap:8px">
-        <button class="btn btn-ghost btn-sm" onclick="window.__BOB__.goSel()">← Retour</button>
-        <div class="logo" style="font-size:18px">
-          <span class="b1">BOB</span><span class="th">the</span><span class="b2">BAGEL</span>
+    <div style="background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:30">
+
+      <!-- Barre principale -->
+      <div style="height:48px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="window.__BOB__.goSel()" style="height:30px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--txt2);font-size:12px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer">← Retour</button>
+          <div style="display:flex;align-items:baseline;gap:1px;line-height:1;user-select:none">
+            <span style="font-family:'Syne',sans-serif;font-weight:800;color:var(--txt);letter-spacing:-1px;font-size:18px">BOB</span>
+            <span style="font-family:'Dancing Script',cursive;font-weight:700;color:var(--red);font-size:15px;margin:0 2px">the</span>
+            <span style="font-family:'Syne',sans-serif;font-weight:800;color:var(--txt);letter-spacing:-1px;font-size:18px">BAGEL</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:4px;align-items:center">
+          ${isAdmin() ? `<button onclick="window.__BOB__.goAdm()" style="width:30px;height:30px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--txt2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">⚙</button>` : ''}
+          <button onclick="window.__BOB__.toggleDark()" style="width:30px;height:30px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--txt2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">◑</button>
+          <button onclick="window.__BOB__.logout()" style="width:30px;height:30px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--txt2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">↩</button>
         </div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        ${isAdmin() ? `<button class="btn btn-ghost btn-sm btn-icon" onclick="window.__BOB__.goAdm()">⚙</button>` : ''}
-        <button class="btn btn-ghost btn-sm btn-icon" onclick="window.__BOB__.toggleDark()">◑</button>
-        <button class="btn btn-ghost btn-sm btn-icon" onclick="window.__BOB__.logout()">↩</button>
-      </div>
-    </div>
 
-    ${SHOPS.length > 1 ? `
-      <div class="context-bar">
-        ${SHOPS.map(s => `
-          <button
-            class="context-pill"
-            style="border-color:${s.color};color:${A.selShop?.id === s.id ? '#fff' : s.color};background:${A.selShop?.id === s.id ? s.color : 'transparent'}"
-            onclick="window.__BOB__.switchShop('${s.id}')"
-          >${s.name}</button>
-        `).join('')}
-      </div>
-    ` : ''}
+      <!-- Switch boutiques (si plusieurs) -->
+      ${SHOPS.length > 1 ? `
+        <div style="padding:6px 14px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border)">
+          ${SHOPS.map(s => `
+            <button onclick="window.__BOB__.switchShop('${s.id}')"
+              style="
+                height:28px;padding:0 12px;border-radius:20px;border:1.5px solid ${s.color};
+                background:${A.selShop?.id === s.id ? s.color : 'transparent'};
+                color:${A.selShop?.id === s.id ? '#fff' : s.color};
+                font-family:'Syne',sans-serif;font-weight:700;font-size:11px;
+                white-space:nowrap;cursor:pointer;letter-spacing:.3px;transition:all .12s
+              ">${s.name}</button>
+          `).join('')}
+        </div>
+      ` : ''}
 
-    <div class="shop-bar" style="background:${sh?.color || 'var(--txt)'}">
-      <span class="shop-bar-name">${sh?.name || ''}</span>
+      <!-- Nom boutique -->
+      <div style="background:${sh?.color || '#1A7A4A'};padding:8px 14px">
+        <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#fff">${sh?.name || ''}</span>
+      </div>
+
     </div>`;
 }
 
-// ── Onglet commande ────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// LIGNE PRODUIT — compact, nom et boutons proches
+// ─────────────────────────────────────────────────────────────
+function productRow(p, sh) {
+  const qty   = A.cart[p.id] || 0;
+  const hasQ  = qty > 0;
+  const level = sh ? stockLevel(sh.id, p.id) : 'ok';
+  const stock = sh ? (A.stock[sh.id]?.[p.id]?.qty ?? '—') : null;
+
+  // Couleurs dynamiques selon état
+  const rowBg   = hasQ ? 'var(--lgreen)' : 'var(--bg2)';
+  const bdrColor = hasQ ? 'var(--green)' : 'var(--border)';
+  const plusBg  = hasQ ? 'var(--green)' : 'var(--bg3)';
+  const plusClr = hasQ ? '#fff' : 'var(--txt)';
+
+  return `
+    <div style="
+      display:flex;
+      align-items:center;
+      padding:9px 14px;
+      border-bottom:1px solid var(--border);
+      background:${rowBg};
+      gap:10px;
+      transition:background .1s
+    ">
+      <!-- NOM + META : flex:1 mais avec min-width:0 pour truncate -->
+      <div style="flex:1;min-width:0">
+        <div style="
+          font-family:'Space Grotesk',sans-serif;
+          font-weight:600;
+          font-size:13px;
+          color:var(--txt);
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+          display:flex;
+          align-items:center;
+          gap:5px
+        ">
+          ${p.name}
+          ${level === 'low' ? '<span style="font-size:9px;color:var(--amber);font-weight:700;flex-shrink:0">⚠ bas</span>' : ''}
+        </div>
+        <div style="font-size:10px;color:var(--txt3);margin-top:1px;font-weight:500;white-space:nowrap">
+          +${p.step} ${p.unit}${stock !== null ? ' · ' + stock + ' ' + p.unit : ''}
+        </div>
+      </div>
+
+      <!-- CONTRÔLE QTÉ — taille fixe, collé au nom -->
+      <div style="
+        display:flex;
+        align-items:center;
+        border:1.5px solid ${bdrColor};
+        border-radius:7px;
+        overflow:hidden;
+        flex-shrink:0;
+        transition:border-color .15s
+      ">
+        <button
+          onclick="window.__BOB__.sCart('${p.id}',Math.max(0,(${qty})-${p.step}))"
+          style="
+            width:30px;height:32px;
+            background:transparent;border:none;
+            color:var(--txt);font-size:17px;font-weight:300;
+            cursor:pointer;line-height:1;
+            transition:background .1s
+          "
+          onmouseover="this.style.background='var(--bg3)'"
+          onmouseout="this.style.background='transparent'"
+        >−</button>
+
+        <span style="
+          width:38px;height:32px;
+          display:flex;align-items:center;justify-content:center;
+          font-family:'Syne',sans-serif;font-weight:700;font-size:13px;
+          color:var(--txt);
+          border-left:1px solid var(--border);
+          border-right:1px solid var(--border);
+          background:var(--bg2)
+        ">${qty || 0}</span>
+
+        <button
+          onclick="window.__BOB__.qAdd('${p.id}')"
+          style="
+            width:30px;height:32px;
+            background:${plusBg};border:none;
+            color:${plusClr};font-size:17px;font-weight:300;
+            cursor:pointer;line-height:1;
+            transition:all .15s
+          "
+          onmouseover="this.style.opacity='.8'"
+          onmouseout="this.style.opacity='1'"
+        >+</button>
+      </div>
+
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// ONGLET COMMANDER
+// ─────────────────────────────────────────────────────────────
 function tabOrder() {
   const cats      = oCats();
   const sh        = A.selShop;
   const cartItems = A.products.filter(p => p.active && (A.cart[p.id] || 0) > 0);
   const cartCount = cartItems.length;
-  const cartQty   = cartItems.reduce((n, p) => n + A.cart[p.id], 0);
+  const cartTotal = cartItems.reduce((n, p) => n + A.cart[p.id], 0);
+
+  const today = new Date().toISOString().split('T')[0];
 
   return `
-    <div class="pb-footer">
-      <!-- Recherche + dates -->
-      <div style="padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;gap:8px">
+    <div style="padding-bottom:72px">
+
+      <!-- Barre recherche + livraison -->
+      <div style="
+        padding:10px 14px;
+        background:var(--bg2);
+        border-bottom:1px solid var(--border);
+        display:flex;
+        flex-direction:column;
+        gap:7px
+      ">
+        <!-- Recherche -->
         <input
-          class="input"
           placeholder="Rechercher un produit…"
           value="${A.search || ''}"
           oninput="window.__BOB__.sSch(this.value)"
-          style="height:40px"
+          style="
+            width:100%;height:38px;
+            padding:0 12px;
+            border:1.5px solid var(--border);border-radius:6px;
+            background:var(--bg);color:var(--txt);
+            font-family:'Space Grotesk',sans-serif;font-size:13px;
+            outline:none;transition:border-color .15s
+          "
+          onfocus="this.style.borderColor='var(--txt)'"
+          onblur="this.style.borderColor='var(--border)'"
         />
+
+        <!-- Date + heure sur UNE ligne compacte -->
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="label" style="white-space:nowrap;flex-shrink:0">Livraison</span>
+          <span style="
+            font-family:'Syne',sans-serif;font-weight:700;
+            font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+            color:var(--txt3);white-space:nowrap;flex-shrink:0
+          ">Livraison</span>
           <input
             type="date"
-            class="input"
             value="${A.del}"
-            min="${new Date().toISOString().split('T')[0]}"
+            min="${today}"
             onchange="window.__BOB__.sDel(this.value)"
-            style="height:36px;font-size:13px;flex:1"
+            style="
+              flex:1;height:34px;
+              padding:0 10px;
+              border:1.5px solid var(--border);border-radius:6px;
+              background:var(--bg2);color:var(--txt);
+              font-family:'Space Grotesk',sans-serif;font-size:13px;
+              outline:none
+            "
           />
           <input
             type="time"
-            class="input"
             value="${A.delT}"
             onchange="window.__BOB__.sDelT(this.value)"
-            style="height:36px;font-size:13px;width:110px;flex-shrink:0"
+            style="
+              width:100px;height:34px;
+              padding:0 10px;
+              border:1.5px solid var(--border);border-radius:6px;
+              background:var(--bg2);color:var(--txt);
+              font-family:'Space Grotesk',sans-serif;font-size:13px;
+              outline:none;flex-shrink:0
+            "
           />
         </div>
       </div>
 
       <!-- Catalogue -->
       ${cats.map(cat => {
-        const prods = aP().filter(p =>
-          p.cat === cat &&
-          (!A.search || p.name.toLowerCase().includes(A.search.toLowerCase()))
-        );
+        const search = (A.search || '').toLowerCase();
+        const prods  = aP().filter(p => p.cat === cat && (!search || p.name.toLowerCase().includes(search)));
         if (!prods.length) return '';
 
         const subs  = [...new Set(prods.map(p => p.sub).filter(Boolean))];
         const noSub = prods.filter(p => !p.sub);
 
         return `
-          <div class="cat-sep">
-            <div class="cat-line"></div>
-            <div class="cat-label">${cat}</div>
-            <div class="cat-line"></div>
+          <!-- Séparateur catégorie -->
+          <div style="
+            display:flex;align-items:center;gap:10px;
+            padding:12px 14px 6px;
+            background:var(--bg)
+          ">
+            <div style="flex:1;height:1px;background:var(--border)"></div>
+            <span style="
+              font-family:'Syne',sans-serif;font-weight:700;
+              font-size:9px;letter-spacing:2.5px;text-transform:uppercase;
+              color:var(--txt3);white-space:nowrap
+            ">${cat}</span>
+            <div style="flex:1;height:1px;background:var(--border)"></div>
           </div>
+
           ${noSub.map(p => productRow(p, sh)).join('')}
+
           ${subs.map(sub => `
-            <div class="sub-label">${sub}</div>
+            <div style="
+              font-family:'Syne',sans-serif;font-weight:700;
+              font-size:9px;letter-spacing:2px;text-transform:uppercase;
+              color:var(--txt3);
+              padding:7px 14px 4px;
+              background:var(--bg3);
+              border-bottom:1px solid var(--border)
+            ">${sub}</div>
             ${prods.filter(p => p.sub === sub).map(p => productRow(p, sh)).join('')}
-          `).join('')}`;
+          `).join('')}
+        `;
       }).join('')}
 
       <!-- Note -->
-      <div style="padding:16px;border-top:1px solid var(--border);background:var(--bg2);margin-top:8px">
-        <div class="label" style="margin-bottom:8px">Note opérationnelle</div>
+      <div style="padding:14px;border-top:1px solid var(--border);background:var(--bg2);margin-top:8px">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--txt3);margin-bottom:6px">
+          Note opérationnelle
+        </div>
         <textarea
-          class="textarea"
           rows="3"
           placeholder="Urgences, précisions, remarques…"
           oninput="window.__BOB__.sNote(this.value)"
+          style="
+            width:100%;padding:10px 12px;
+            border:1.5px solid var(--border);border-radius:6px;
+            background:var(--bg2);color:var(--txt);
+            font-family:'Space Grotesk',sans-serif;font-size:13px;
+            resize:none;outline:none;line-height:1.5;
+            transition:border-color .15s
+          "
+          onfocus="this.style.borderColor='var(--txt)'"
+          onblur="this.style.borderColor='var(--border)'"
         >${A.note}</textarea>
       </div>
+
     </div>
 
-    <!-- Sticky footer bouton envoi -->
-    <div class="sticky-footer">
+    <!-- Footer sticky envoi -->
+    <div style="
+      position:fixed;bottom:0;left:0;right:0;
+      padding:10px 14px;
+      background:var(--bg2);
+      border-top:1px solid var(--border);
+      z-index:20
+    ">
       <button
-        class="btn btn-primary btn-lg btn-full ${cartCount === 0 ? 'dbl' : ''}"
         onclick="${cartCount > 0 ? 'window.__BOB__.oSum()' : ''}"
-        style="justify-content:space-between"
+        style="
+          width:100%;height:46px;
+          border-radius:8px;border:none;
+          background:${cartCount > 0 ? 'var(--txt)' : 'var(--border)'};
+          color:${cartCount > 0 ? 'var(--bg2)' : 'var(--txt3)'};
+          font-family:'Syne',sans-serif;font-weight:700;font-size:13px;
+          letter-spacing:.5px;cursor:${cartCount > 0 ? 'pointer' : 'default'};
+          display:flex;align-items:center;justify-content:${cartCount > 0 ? 'space-between' : 'center'};
+          padding:0 18px;
+          transition:all .15s
+        "
       >
         <span>Envoyer la commande</span>
         ${cartCount > 0 ? `
-          <span style="background:rgba(255,255,255,.2);border-radius:6px;padding:2px 10px;font-size:12px;font-weight:600">
-            ${cartQty} art.
-          </span>
+          <span style="
+            background:rgba(255,255,255,.15);
+            border-radius:5px;padding:2px 10px;
+            font-size:11px;font-weight:600
+          ">${cartTotal} art.</span>
         ` : ''}
       </button>
     </div>
@@ -138,117 +334,85 @@ function tabOrder() {
     ${A.summary ? bSum() : ''}`;
 }
 
-function productRow(p, sh) {
-  const qty    = A.cart[p.id] || 0;
-  const active = qty > 0;
-  const level  = sh ? stockLevel(sh.id, p.id) : 'ok';
-  const stock  = sh ? (A.stock[sh.id]?.[p.id]?.qty ?? '—') : null;
-
-  const borderColor = active ? 'var(--green)' : 'var(--border)';
-  const plusBg      = active ? 'var(--green)' : 'transparent';
-  const plusColor   = active ? '#fff' : 'var(--txt)';
-  const rowBg       = active ? 'var(--lgreen)' : 'var(--bg2)';
-
-  return `
-    <div style="display:flex;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border);background:${rowBg};gap:12px;transition:background .1s">
-
-      <!-- Nom -->
-      <div style="min-width:0;flex:1">
-        <div style="display:flex;align-items:center;gap:5px">
-          <span style="font-weight:600;font-size:14px;color:var(--txt)">${p.name}</span>
-          ${level === 'low' ? '<span style="font-size:10px;color:var(--amber);font-weight:700">⚠</span>' : ''}
-        </div>
-        <div style="font-size:11px;color:var(--txt3);margin-top:1px;font-weight:500">
-          +${p.step} ${p.unit}${stock !== null ? ' · Stock : ' + stock + ' ' + p.unit : ''}
-        </div>
-      </div>
-
-      <!-- Quantité inline compact -->
-      <div style="display:flex;align-items:center;border:1.5px solid ${borderColor};border-radius:8px;overflow:hidden;flex-shrink:0;transition:border-color .15s">
-        <button
-          onclick="window.__BOB__.sCart('${p.id}',Math.max(0,(${qty})-${p.step}))"
-          style="width:32px;height:34px;background:transparent;border:none;color:var(--txt);font-size:18px;line-height:1;cursor:pointer;transition:background .1s;font-weight:300"
-          onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'"
-        >−</button>
-        <input
-          type="number"
-          value="${qty}"
-          min="0"
-          step="${p.step}"
-          onchange="window.__BOB__.sCart('${p.id}',this.value)"
-          oninput="window.__BOB__.sCart('${p.id}',this.value)"
-          style="width:40px;height:34px;border:none;border-left:1px solid var(--border);border-right:1px solid var(--border);text-align:center;font-size:13px;font-weight:700;background:var(--bg2);color:var(--txt);outline:none;font-family:'Space Grotesk',sans-serif;-moz-appearance:textfield"
-        />
-        <button
-          onclick="window.__BOB__.qAdd('${p.id}')"
-          style="width:32px;height:34px;background:${plusBg};border:none;color:${plusColor};font-size:18px;line-height:1;cursor:pointer;transition:all .15s;font-weight:300"
-          onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'"
-        >+</button>
-      </div>
-
-    </div>`;
-}
-
-// ── Onglet commandes boutique ──────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// ONGLET COMMANDES
+// ─────────────────────────────────────────────────────────────
 function tabOrders() {
   const sh     = A.selShop;
   const orders = A.orders.filter(o => o.shopId === sh?.id);
 
-  if (!orders.length) {
-    return `
-      <div style="padding:60px 20px;text-align:center">
-        <div style="font-size:32px;margin-bottom:12px">📋</div>
-        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--txt);margin-bottom:6px">Aucune commande</div>
-        <div style="font-size:13px;color:var(--txt2)">Vos commandes apparaîtront ici.</div>
-      </div>`;
-  }
+  if (!orders.length) return `
+    <div style="padding:60px 20px;text-align:center">
+      <div style="font-size:28px;margin-bottom:10px">📋</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--txt)">Aucune commande</div>
+      <div style="font-size:13px;color:var(--txt2);margin-top:4px">Vos commandes apparaîtront ici.</div>
+    </div>`;
 
   return `
-    <div style="padding:16px">
+    <div style="padding:14px">
       ${orders.map(o => {
         const st   = ORDER_STATUSES[o.status] || {};
         const open = A['oO_' + o.id];
 
         return `
-          <div class="card" style="border-left:3px solid ${st.dot || 'var(--border)'}">
+          <div style="
+            background:var(--bg2);
+            border:1px solid var(--border);
+            border-left:3px solid ${st.dot || 'var(--border)'};
+            border-radius:10px;
+            margin-bottom:10px;
+            overflow:hidden;
+            box-shadow:var(--sh)
+          ">
+            <!-- Header commande -->
             <div
-              style="padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;cursor:pointer"
               onclick="window.__BOB__.tO('${o.id}')"
+              style="padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;cursor:pointer"
             >
               <div style="min-width:0;flex:1">
-                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--txt);margin-bottom:2px">${o.id}</div>
-                <div style="font-size:12px;color:var(--txt2)">${fD(o.createdAt)} · ${fT(o.createdAt)}</div>
-                <div style="font-size:12px;color:var(--txt2)">📦 ${fDl(o.delivery)}${o.deliveryTime ? ` · ⏰ ${o.deliveryTime}` : ''}</div>
+                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--txt)">${o.id}</div>
+                <div style="font-size:11px;color:var(--txt2);margin-top:2px">${fD(o.createdAt)} · ${fT(o.createdAt)} · ${o.orderedBy}</div>
+                <div style="font-size:11px;color:var(--txt2)">📦 ${fDl(o.delivery)}${o.deliveryTime ? ' · ⏰ ' + o.deliveryTime : ''}</div>
               </div>
-              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-                <span class="badge" style="background:${st.dot}18;color:${st.dot}">
-                  <span class="badge-dot" style="background:${st.dot}"></span>${st.label}
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
+                <span style="
+                  display:inline-flex;align-items:center;gap:5px;
+                  font-size:11px;font-weight:600;
+                  padding:3px 9px;border-radius:20px;
+                  background:${st.dot}18;color:${st.dot}
+                ">
+                  <span style="width:6px;height:6px;border-radius:50%;background:${st.dot};flex-shrink:0"></span>
+                  ${st.label}
                 </span>
-                <span style="font-size:12px;color:var(--txt3)">${open ? '▲' : '▼'}</span>
+                <span style="font-size:11px;color:var(--txt3)">${open ? '▲' : '▼'}</span>
               </div>
             </div>
 
             ${open ? `
-              <div style="padding:0 16px 16px;border-top:1px solid var(--border)">
+              <div style="border-top:1px solid var(--border);padding:12px 14px">
                 ${(o.items || []).map(i => {
                   const p = gP(i.id);
                   return `
-                    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
                       <span style="font-size:13px;color:var(--txt)">${p?.name || i.id}</span>
-                      <span style="font-size:13px;font-weight:700">${i.qty} <span style="color:var(--txt3);font-weight:400">${p?.unit}</span></span>
+                      <span style="font-size:13px;font-weight:700;color:var(--txt)">${i.qty} <span style="color:var(--txt3);font-weight:400">${p?.unit}</span></span>
                     </div>`;
                 }).join('')}
 
-                ${o.note ? `<div style="margin-top:10px;font-size:12px;color:var(--txt2);background:var(--bg3);padding:8px 10px;border-radius:var(--r2)">💬 ${o.note}</div>` : ''}
-                ${o.comment ? `<div style="margin-top:6px;font-size:12px;color:var(--blue);padding:8px 10px;background:${A.dark?'#1e2d47':'#EFF6FF'};border-radius:var(--r2)">🍳 ${o.comment}</div>` : ''}
+                ${o.note ? `<div style="margin-top:8px;padding:8px 10px;background:var(--bg3);border-radius:6px;font-size:12px;color:var(--txt2)">💬 ${o.note}</div>` : ''}
+                ${o.comment ? `<div style="margin-top:6px;padding:8px 10px;background:${A.dark?'#1e2d47':'#EFF6FF'};border-radius:6px;font-size:12px;color:var(--blue)">🍳 ${o.comment}</div>` : ''}
 
-                <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+                <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
                   ${(o.status === 'validated' || o.status === 'delivering') ? `
-                    <button class="btn btn-primary" style="flex:1" onclick="window.__BOB__.cfSRc('${o.id}')">
-                      Confirmer réception 📦
-                    </button>
+                    <button
+                      onclick="window.__BOB__.cfSRc('${o.id}')"
+                      style="flex:1;height:40px;background:var(--txt);color:var(--bg2);border:none;border-radius:7px;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer"
+                    >Confirmer réception 📦</button>
                   ` : ''}
-                  <button class="btn btn-ghost btn-sm" onclick="window.__BOB__.dupeO('${o.id}')">Dupliquer ↻</button>
+                  <button
+                    onclick="window.__BOB__.dupeO('${o.id}')"
+                    style="height:40px;padding:0 14px;background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;cursor:pointer"
+                  >Dupliquer ↻</button>
                 </div>
               </div>
             ` : ''}
@@ -257,7 +421,9 @@ function tabOrders() {
     </div>`;
 }
 
-// ── Onglet stock boutique ──────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// ONGLET STOCK
+// ─────────────────────────────────────────────────────────────
 function tabStock() {
   const sh   = A.selShop;
   if (!sh) return '';
@@ -265,36 +431,49 @@ function tabStock() {
   const lows = getLowStock(sh.id);
 
   return `
-    <div style="padding:16px">
+    <div style="padding:14px">
       ${lows.length > 0 ? `
-        <div class="alert-low">
-          <span>⚠️</span>
-          <span>${lows.length} produit${lows.length > 1 ? 's' : ''} en dessous du seuil d'alerte</span>
+        <div style="
+          background:${A.dark ? '#2D1B00' : '#FFF7ED'};
+          border:1px solid #FED7AA;
+          border-radius:8px;
+          padding:10px 12px;
+          display:flex;align-items:center;gap:8px;
+          font-size:13px;font-weight:600;
+          color:${A.dark ? '#FCD34D' : '#92400E'};
+          margin-bottom:12px
+        ">
+          ⚠️ ${lows.length} produit${lows.length > 1 ? 's' : ''} sous le seuil d'alerte
         </div>
       ` : ''}
 
       ${cats.map(cat => {
         const prods = aP().filter(p => p.cat === cat);
         return `
-          <div class="cat-sep">
-            <div class="cat-line"></div>
-            <div class="cat-label">${cat}</div>
-            <div class="cat-line"></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 0 5px">
+            <div style="flex:1;height:1px;background:var(--border)"></div>
+            <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--txt3)">${cat}</span>
+            <div style="flex:1;height:1px;background:var(--border)"></div>
           </div>
           ${prods.map(p => {
             const s   = (A.stock[sh.id] || {})[p.id] || { qty: 0, alert: 10 };
             const low = s.qty <= s.alert;
             return `
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:${low ? (A.dark ? '#2D1B00' : '#FFF7ED') : 'var(--bg2)'}">
-                <div>
-                  <div style="font-weight:600;font-size:14px;color:var(--txt)">${p.name}</div>
-                  <div style="font-size:11px;color:var(--txt3);margin-top:2px">Seuil alerté : ${s.alert} ${p.unit}</div>
+              <div style="
+                display:flex;align-items:center;justify-content:space-between;
+                padding:10px 0;border-bottom:1px solid var(--border);gap:12px
+              ">
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:600;font-size:13px;color:var(--txt)">${p.name}</div>
+                  <div style="font-size:11px;color:var(--txt3);margin-top:1px">Seuil : ${s.alert} ${p.unit}</div>
                 </div>
-                <div style="text-align:right">
+                <div style="text-align:right;flex-shrink:0">
                   <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:${low ? 'var(--red)' : 'var(--green)'}">
                     ${s.qty}
                   </div>
-                  <div style="font-size:11px;color:var(--txt3)">${p.unit}${low ? ' · ⚠ BAS' : ''}</div>
+                  <div style="font-size:10px;color:${low ? 'var(--red)' : 'var(--txt3)'};font-weight:600">
+                    ${p.unit}${low ? ' · ⚠ BAS' : ''}
+                  </div>
                 </div>
               </div>`;
           }).join('')}`;
@@ -302,47 +481,76 @@ function tabStock() {
     </div>`;
 }
 
-// ── Profil ─────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// ONGLET PROFIL
+// ─────────────────────────────────────────────────────────────
 function tabProfile() {
   const u = A.cUser;
   if (!u) return '';
 
   return `
-    <div style="padding:24px;max-width:400px">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--txt);letter-spacing:-.3px;margin-bottom:24px">
+    <div style="padding:20px;max-width:400px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:var(--txt);letter-spacing:-.3px;margin-bottom:22px">
         Mon profil
       </div>
 
       <div style="display:flex;flex-direction:column;gap:14px">
-        <!-- Avatar -->
-        <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">
           <div style="position:relative;cursor:pointer" onclick="window.__BOB__.trPh()">
-            <div style="width:72px;height:72px;border-radius:14px;background:var(--txt);display:flex;align-items:center;justify-content:center;color:var(--bg2);font-size:26px;font-weight:700;overflow:hidden">
+            <div style="
+              width:64px;height:64px;border-radius:12px;
+              background:var(--txt);
+              display:flex;align-items:center;justify-content:center;
+              color:var(--bg2);font-size:22px;font-weight:700;
+              overflow:hidden
+            ">
               ${u.photo ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover">` : u.name[0]}
             </div>
-            <div style="position:absolute;bottom:-4px;right:-4px;background:var(--txt);border-radius:6px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid var(--bg2)">📷</div>
+            <div style="
+              position:absolute;bottom:-4px;right:-4px;
+              background:var(--txt);border:2px solid var(--bg2);
+              border-radius:6px;width:20px;height:20px;
+              display:flex;align-items:center;justify-content:center;font-size:10px
+            ">📷</div>
             <input type="file" id="phi" accept="image/*" style="display:none" onchange="window.__BOB__.hdPh(event)"/>
           </div>
           <div>
-            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--txt)">${u.name}</div>
-            <div class="label" style="margin-top:3px">${u.role}</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--txt)">${u.name}</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;color:var(--txt3);margin-top:3px">${u.role.toUpperCase()}</div>
           </div>
         </div>
 
         <div>
-          <div class="label" style="margin-bottom:6px">Nom d'affichage</div>
-          <input id="pn" class="input" value="${u.name}" placeholder="Nom"/>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--txt3);margin-bottom:6px">Nom d'affichage</div>
+          <input id="pn" value="${u.name}" placeholder="Nom"
+            style="width:100%;height:42px;padding:0 12px;border:1.5px solid var(--border);border-radius:7px;background:var(--bg2);color:var(--txt);font-family:'Space Grotesk',sans-serif;font-size:14px;outline:none"
+            onfocus="this.style.borderColor='var(--txt)'" onblur="this.style.borderColor='var(--border)'"
+          />
         </div>
         <div>
-          <div class="label" style="margin-bottom:6px">Nouveau mot de passe</div>
-          <input id="pp" class="input" type="password" placeholder="Laisser vide pour ne pas changer"/>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--txt3);margin-bottom:6px">Nouveau mot de passe</div>
+          <input id="pp" type="password" placeholder="Laisser vide pour ne pas changer"
+            style="width:100%;height:42px;padding:0 12px;border:1.5px solid var(--border);border-radius:7px;background:var(--bg2);color:var(--txt);font-family:'Space Grotesk',sans-serif;font-size:14px;outline:none"
+            onfocus="this.style.borderColor='var(--txt)'" onblur="this.style.borderColor='var(--border)'"
+          />
         </div>
-        <button class="btn btn-primary btn-lg btn-full" onclick="window.__BOB__.svPr()">Sauvegarder</button>
+        <button
+          onclick="window.__BOB__.svPr()"
+          style="
+            width:100%;height:44px;
+            background:var(--txt);color:var(--bg2);
+            border:none;border-radius:7px;
+            font-family:'Syne',sans-serif;font-weight:700;font-size:13px;
+            letter-spacing:.5px;cursor:pointer
+          "
+        >Sauvegarder</button>
       </div>
     </div>`;
 }
 
-// ── Vue boutique principale ────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// VUE BOUTIQUE PRINCIPALE
+// ─────────────────────────────────────────────────────────────
 export function bShop() {
   const tabs = [
     { id: 'order',   label: 'Commander',  icon: '🛒' },
@@ -353,23 +561,46 @@ export function bShop() {
 
   let content = '';
   switch (A.sTab) {
-    case 'order':   content = tabOrder();   break;
-    case 'orders':  content = tabOrders();  break;
-    case 'stock':   content = tabStock();   break;
-    case 'profile': content = tabProfile(); break;
-    default:        content = tabOrder();
+    case 'order':    content = tabOrder();   break;
+    case 'orders':   content = tabOrders();  break;
+    case 'stock':    content = tabStock();   break;
+    case 'profile':  content = tabProfile(); break;
+    default:         content = tabOrder();
   }
 
   return `
-    <div class="page">
+    <div style="min-height:100vh;background:var(--bg);display:flex;flex-direction:column">
       ${shopHeader()}
-      <div class="tabs">
+
+      <!-- Tabs -->
+      <div style="
+        display:flex;
+        background:var(--bg2);
+        border-bottom:1px solid var(--border);
+        overflow-x:auto;
+        scrollbar-width:none;
+        padding:0 4px
+      ">
         ${tabs.map(t => `
-          <button class="tab${A.sTab === t.id ? ' on' : ''}" onclick="window.__BOB__.sSTb('${t.id}')">
-            ${t.icon} ${t.label}
-          </button>
+          <button
+            onclick="window.__BOB__.sSTb('${t.id}')"
+            style="
+              height:42px;padding:0 14px;
+              border:none;background:transparent;
+              font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;
+              color:${A.sTab === t.id ? 'var(--txt)' : 'var(--txt3)'};
+              border-bottom:2px solid ${A.sTab === t.id ? 'var(--txt)' : 'transparent'};
+              cursor:pointer;white-space:nowrap;flex-shrink:0;
+              transition:color .12s,border-color .12s;
+              display:flex;align-items:center;gap:5px
+            "
+          >${t.icon} ${t.label}</button>
         `).join('')}
       </div>
-      <div class="main fade">${content}</div>
+
+      <!-- Contenu -->
+      <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch" class="fade">
+        ${content}
+      </div>
     </div>`;
 }
