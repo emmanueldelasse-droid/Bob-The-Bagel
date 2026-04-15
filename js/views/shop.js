@@ -168,7 +168,7 @@ function tabOrder() {
   const today = new Date().toISOString().split('T')[0];
 
   return `
-    <div style="padding-bottom:72px">
+    <div style="padding-bottom:72px;max-width:720px;width:100%;margin:0 auto">
 
       <!-- Barre recherche + livraison -->
       <div style="
@@ -300,11 +300,13 @@ function tabOrder() {
 
     <!-- Footer sticky envoi -->
     <div style="
-      position:fixed;bottom:0;left:0;right:0;
+      position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+      width:100%;max-width:720px;
       padding:10px 14px;
       background:var(--bg2);
       border-top:1px solid var(--border);
-      z-index:20
+      z-index:20;
+      box-sizing:border-box
     ">
       <button
         onclick="${cartCount > 0 ? 'window.__BOB__.oSum()' : ''}"
@@ -349,7 +351,7 @@ function tabOrders() {
     </div>`;
 
   return `
-    <div style="padding:14px">
+    <div style="padding:14px;max-width:720px;width:100%;margin:0 auto">
       ${orders.map(o => {
         const st   = ORDER_STATUSES[o.status] || {};
         const open = A['oO_' + o.id];
@@ -431,7 +433,7 @@ function tabStock() {
   const lows = getLowStock(sh.id);
 
   return `
-    <div style="padding:14px">
+    <div style="padding:14px;max-width:720px;width:100%;margin:0 auto">
       ${lows.length > 0 ? `
         <div style="
           background:${A.dark ? '#2D1B00' : '#FFF7ED'};
