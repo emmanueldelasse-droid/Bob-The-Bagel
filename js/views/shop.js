@@ -417,6 +417,10 @@ function tabOrders() {
                     onclick="window.__BOB__.dupeO('${o.id}')"
                     style="height:40px;padding:0 14px;background:transparent;color:var(--txt2);border:1px solid var(--border);border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;cursor:pointer"
                   >Dupliquer ↻</button>
+                  <button
+                    onclick="window.__BOB__.openOrderChat('${o.id}','${o.id}');window.__BOB__.sSTb('chat')"
+                    style="height:40px;padding:0 14px;background:transparent;color:var(--blue);border:1px solid var(--blue);border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px"
+                  >💬 Discuter</button>
                 </div>
               </div>
             ` : ''}

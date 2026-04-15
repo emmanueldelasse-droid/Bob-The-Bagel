@@ -142,6 +142,10 @@ function tabKOrders() {
                     ${o.status === 'received' ? `<span style="font-size:12px;color:var(--green);font-weight:600">✓ Réceptionnée par la boutique</span>` : ''}
                     ${o.status === 'rejected' ? `<span style="font-size:12px;color:var(--red);font-weight:600">✗ Refusée${o.validatedBy ? ` par ${o.validatedBy}` : ''}</span>` : ''}
                     ${(o.status === 'validated' || o.status === 'delivering') ? `<span style="font-size:12px;color:var(--txt2)">En attente de réception boutique…</span>` : ''}
+                    <button
+                      onclick="window.__BOB__.openOrderChat('${o.id}','${o.id}');window.__BOB__.sKTb('chat')"
+                      style="height:36px;padding:0 12px;background:transparent;color:var(--blue);border:1.5px solid var(--blue);border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0"
+                    >💬 Discuter</button>
                   </div>
                 ` : ''}
               </div>

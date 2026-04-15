@@ -106,3 +106,29 @@ export function deleteMessage(msgId) {
   sv('msg', A.messages);
   render();
 }
+
+// ── Ouvrir ou créer conv liée à une commande ──────────────
+/**
+ * Appelé depuis les fiches commande (boutique + cuisine).
+ * Crée la conversation si elle n'existe pas, la sélectionne,
+ * et bascule automatiquement sur l'onglet chat.
+ */
+export function openOrderChat(orderId, orderLabel) {
+  // Cherche une conv existante pour cette commande
+  const existing = A.conversations.find(c => c.orderId === orderId);
+  if (existing) {
+    selectConv(existing.id);
+    return;
+  }
+  // Crée la conv
+  const conv = {
+    id:      'conv-' + gId(),
+    type:    'order',
+    orderId,
+    label:   orderLabel,
+    icon:    '📦',
+  };
+  A.conversations = [...A.conversations, conv];
+  sv('conv', A.conversations);
+  selectConv(conv.id);
+}
