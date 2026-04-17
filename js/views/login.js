@@ -1,5 +1,6 @@
 /* ============================================================
-   BOBtheBAGEL — views/login.js v2
+   BOBtheBAGEL — views/login.js v3
+   Login email (Supabase Auth)
    ============================================================ */
 
 export function bLogin() {
@@ -25,7 +26,9 @@ export function bLogin() {
           <input
             id="ln"
             class="input"
-            placeholder="Identifiant"
+            type="email"
+            inputmode="email"
+            placeholder="Email"
             autocomplete="username"
             style="height:48px;font-size:15px"
             onkeydown="if(event.key==='Enter')document.getElementById('lp').focus()"
@@ -41,7 +44,7 @@ export function bLogin() {
           />
 
           <div id="le" style="display:none;font-size:12px;font-weight:600;color:var(--red);padding:2px 0">
-            Identifiant ou mot de passe incorrect
+            Email ou mot de passe incorrect
           </div>
 
           <button
