@@ -13,8 +13,8 @@
 <link rel="stylesheet" href="css/components.css"/>
 <link rel="stylesheet" href="css/layout.css"/>
 
-<!-- Supabase CDN (décommenter quand prêt à brancher) -->
-<!-- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> -->
+<!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -54,9 +54,6 @@ import {
   setCalColorMode, calNavPrev, calNavNext, calNavToday,
   addCheckItem, toggleCheckItem, removeCheckItem,
   duplicateEvent, exportEventPDF,
-  setCalColorMode, calNavPrev, calNavNext, calNavToday,
-  addCheckItem, toggleCheckItem, removeCheckItem,
-  duplicateEvent, exportEventPDF,
 } from './js/modules/calendar.js';
 
 // Modules chat
@@ -72,6 +69,15 @@ import {
   tAP, sNP, aP2, tP,
   trPh, hdPh, svPr,
 } from './js/modules/admin.js';
+
+// ── Init Supabase (test de connexion) ──────────────────────
+import { getSupabase } from './js/api/supabase.js';
+const sb = getSupabase();
+if (sb) {
+  console.log('[BOB] ✅ Supabase client chargé');
+} else {
+  console.warn('[BOB] ⚠️ Supabase client non disponible (vérifier la clé et la CDN)');
+}
 
 // ── Exposition globale window.__BOB__ ──────────────────────
 // Nécessaire pour que les handlers HTML inline (onclick="...") fonctionnent
