@@ -29,7 +29,7 @@
 // ── Imports ────────────────────────────────────────────────
 import { A, sv, CATEGORY_ICONS }  from './js/state.js';
 import { render, toast, gId, cSec, aP, oCats, gP, fD, fT, fDl, dDel, nISO, cap, setBApp } from './js/utils.js';
-import { dLog, logout, isAdmin, canAccessKitchen }   from './js/auth.js';
+import { dLog, logout, isAdmin, canAccessKitchen, restoreSession } from './js/auth.js';
 import { bApp, goSel, goShop, goKit, goAdm, switchShop, sSTb, sKTb, sSCat, sRCat, sSch, toggleDark, setLang } from './js/router.js';
 
 // Modules commandes
@@ -82,7 +82,6 @@ if (sb) {
 // ── Exposition globale window.__BOB__ ──────────────────────
 // Nécessaire pour que les handlers HTML inline (onclick="...") fonctionnent
 // avec des modules ES6.
-// En production avec un vrai framework (React, Vue), ce pattern disparaît.
 window.__BOB__ = {
   // State & constants (pour cSec dans utils)
   CATEGORY_ICONS,
@@ -114,7 +113,6 @@ window.__BOB__ = {
   setCalColorMode, calNavPrev, calNavNext, calNavToday,
   addCheckItem, toggleCheckItem, removeCheckItem,
   duplicateEvent, exportEventPDF,
-  // toggle détail événement
   _toggleEv: (id) => { A['oEv_' + id] = !A['oEv_' + id]; import('./js/utils.js').then(({render})=>render()); },
 
   // Chat
@@ -131,9 +129,12 @@ window.__BOB__ = {
 // ── Init ───────────────────────────────────────────────────
 if (!A.del) A.del = dDel();
 
-// Injecte bApp dans utils (résout la dépendance circulaire utils ↔ router)
-// router.js appelle setBApp() à son chargement, donc c'est déjà fait ici.
-render();
+// Restaure la session Supabase si elle existe (rafraîchissement de page),
+// puis affiche l'app.
+(async () => {
+  await restoreSession();
+  render();
+})();
 </script>
 </body>
 </html>
