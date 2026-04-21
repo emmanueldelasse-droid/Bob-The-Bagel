@@ -16,7 +16,7 @@
 ## 2) RÉSUMÉ ULTRA-COURT
 - Runtime réel : app statique `index.html` + modules JS ES6, **pas React**.
 - Backend cible : Supabase comme **source de vérité unique**.
-- État réel : commandes + stock principaux sont branchés à Supabase avec hydratation et synchro live minimales, mais chat, calendrier, admin users et boutiques restent encore trop dépendants du front local.
+- État réel : commandes + stock principaux sont branchés à Supabase avec hydratation, synchro live minimale, et états UI visibles loading/error, mais chat, calendrier, admin users et boutiques restent encore trop dépendants du front local.
 
 ## 3) ÉTAT ACTUEL RÉEL
 ### Ce qui existe déjà
@@ -42,6 +42,7 @@
 - Hydratation du stock au login / restore session
 - Écritures de stock critiques via helpers Supabase (mise à jour stock, réception commande, réception fournisseur)
 - Synchro live minimale commandes + stock démarrée au login / restore session et arrêtée au logout
+- États visuels loading/error/sync ajoutés dans les vues boutique et cuisine pour commandes/stock
 
 ### Ce qui reste faux / incomplet
 - Chat encore local
@@ -53,7 +54,6 @@
 - Admin ne gère pas encore ajout/suppression boutiques
 - Photos chat non branchées dans l'UI finale
 - Couches commandes/stock encore à fiabiliser selon le vrai schéma Supabase en production
-- Les vues n'affichent pas encore assez clairement les états loading/error runtime
 
 ## 4) STACK RÉELLE
 - Frontend : HTML + CSS + JavaScript ES6 modulaire
@@ -91,12 +91,12 @@
 - `js/views/chat.js`
 
 ## 7) PROCHAINE ACTION UNIQUE
-**NEXT_ACTION** : ajouter des garde-fous visibles loading/error dans les vues commandes/stock, puis attaquer `chat` comme prochain gros bloc métier encore local.
+**NEXT_ACTION** : attaquer `chat` pour sortir le prochain gros bloc métier du `localStorage`, tout en gardant le même niveau de fiabilité visuelle et runtime.
 
 ## 8) BLOCAGES / RISQUES
 - App encore hybride = comportement non totalement fiable en multi-utilisateur réel
 - Mapping Supabase volontairement défensif car schéma distant pas encore figé dans le repo
-- Faux sentiment de “fini” sur plusieurs écrans admin / chat / calendrier
+- Faux sentiment de “fini” sur admin / chat / calendrier
 - Référentiel visuel ancien possiblement contradictoire avec le runtime actuel
 
 ## 9) PLANNING D'AMÉLIORATION VIVANT
@@ -122,7 +122,7 @@
 | M1 | Nettoyer logs et traçabilité | TODO | P2 | Audit utile |
 | N1 | Trancher l'identité visuelle cible officielle | DECIDE | P2 | Plus de contradiction design/référentiel |
 | O1 | Supprimer les faux écrans “finis” | TODO | P1 | Produit plus honnête et plus propre |
-| P1 | Ajouter des états loading/error visibles sur commandes/stock | TODO | P1 | UX plus fiable et moins trompeuse |
+| P1 | Ajouter des états loading/error visibles sur commandes/stock | DONE | P1 | UX plus fiable et moins trompeuse |
 
 ## 10) DERNIÈRES DÉCISIONS VALIDÉES
 - Runtime officiel de reprise = app actuelle HTML/JS modulaire
@@ -131,15 +131,15 @@
 - Le planning ci-dessus est le backlog officiel à maintenir
 - Le `README.md` doit rester aligné avec la réalité du projet
 - Les commandes et le stock passent désormais par une couche Supabase défensive avant d'attaquer chat / admin / calendrier
-- La fiabilité passe maintenant aussi par la synchro live minimale et par des états UI plus honnêtes
+- La fiabilité passe maintenant aussi par la synchro live minimale et par des états UI visibles loading/error
 
 ## 11) DERNIÈRE SESSION
 - Date : 2026-04-21
 - IA : ChatGPT (GPT-5.4 Thinking)
-- Fait : audit réel du repo + réécriture du référentiel + création du backlog vivant + correction du `README.md` + première bascule commandes vers Supabase + première bascule stock vers Supabase + ajout de la synchro live minimale commandes/stock
+- Fait : audit réel du repo + réécriture du référentiel + création du backlog vivant + correction du `README.md` + première bascule commandes vers Supabase + première bascule stock vers Supabase + ajout de la synchro live minimale commandes/stock + ajout des états UI loading/error visibles dans boutique et cuisine
 - Fichiers inspectés : `SESSION.md`, `README.md`, `index.html`, `js/state.js`, `js/auth.js`, `js/api/supabase.js`, `js/modules/orders.js`, `js/modules/stock.js`, `js/views/shop.js`, `js/views/kitchen.js`
-- Fichiers modifiés : `README.md`, `SESSION.md`, `js/state.js`, `js/api/supabase.js`, `js/modules/orders.js`, `js/modules/stock.js`, `js/auth.js`, `index.html`
-- Points ouverts : vérifier le comportement réel avec le schéma Supabase distant, afficher mieux loading/error dans les vues, puis migrer le chat
+- Fichiers modifiés : `README.md`, `SESSION.md`, `js/state.js`, `js/api/supabase.js`, `js/modules/orders.js`, `js/modules/stock.js`, `js/auth.js`, `index.html`, `js/views/shop.js`, `js/views/kitchen.js`
+- Points ouverts : vérifier le comportement réel avec le schéma Supabase distant, puis migrer le chat
 
 ## 12) FORMAT OBLIGATOIRE POUR TOUTE IA
 ### Au démarrage
