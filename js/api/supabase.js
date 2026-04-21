@@ -3,7 +3,7 @@
    Client Supabase — CONFIGURÉ
    ============================================================ */
 
-import { A, SHOPS, setRuntimeFlag } from '../state.js';
+import { A, SHOPS, setRuntimeFlag, sv } from '../state.js';
 
 const SUPABASE_URL      = 'https://wznalartaqvcehpohfsr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFsYXJ0YXF2Y2VocG9oZnNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MzAzMzgsImV4cCI6MjA5MjAwNjMzOH0.MqomT4WEX5dMXpgEisG8S_0h165fmbsI70sfEtG8cl0';
@@ -13,6 +13,28 @@ let _ordersChannel = null;
 let _stockChannel = null;
 let _refreshOrdersTimer = null;
 let _refreshStockTimer = null;
+
+function isTestMode() {
+  return !!A.testProfile;
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function persistLocalOrders(orders) {
+  const nextOrders = sortOrdersDesc(clone(orders || []));
+  A.orders = nextOrders;
+  sv('or', nextOrders);
+  return nextOrders;
+}
+
+function persistLocalStock(stock) {
+  const nextStock = clone(stock || {});
+  A.stock = nextStock;
+  sv('st', nextStock);
+  return nextStock;
+}
 
 export function getSupabase() {
   if (!_client && typeof window !== 'undefined' && typeof window.supabase !== 'undefined') {
@@ -167,6 +189,11 @@ export async function getCurrentProfile() {
 
 // ── Orders ─────────────────────────────────────────────────
 export async function fetchOrders(shopId = null) {
+  if (isTestMode()) {
+    const orders = clone(A.orders || []);
+    return sortOrdersDesc(shopId ? orders.filter((order) => order.shopId === shopId) : orders);
+  }
+
   const sb = getSupabase();
   const rows = await tryQueries([
     () => {
@@ -244,6 +271,11 @@ function buildOrderInsertVariants(order) {
 }
 
 export async function createOrder(order) {
+  if (isTestMode()) {
+    const nextOrders = persistLocalOrders([normalizeOrderRow(order), ...(A.orders || [])].filter(Boolean));
+    return nextOrders.find((item) => item.id === order.id) || normalizeOrderRow(order);
+  }
+
   const sb = getSupabase();
   let lastError = null;
 
@@ -297,6 +329,16 @@ function buildOrderPatchVariants(patch) {
 }
 
 export async function patchOrder(orderId, patch) {
+  if (isTestMode()) {
+    const nextOrders = (A.orders || []).map((order) => (
+      order.id === orderId
+        ? normalizeOrderRow({ ...order, ...patch, id: orderId })
+        : order
+    ));
+    const persisted = persistLocalOrders(nextOrders);
+    return persisted.find((order) => order.id === orderId) || normalizeOrderRow({ id: orderId, ...patch });
+  }
+
   const sb = getSupabase();
   let lastError = null;
 
@@ -317,6 +359,14 @@ export async function loadOrdersIntoState(shopId = null) {
   setRuntimeFlag('ordersLoading', true);
   setRuntimeFlag('ordersError', '');
   try {
+    if (isTestMode()) {
+      const orders = await fetchOrders(shopId);
+      A.orders = orders;
+      setRuntimeFlag('ordersHydrated', true);
+      setRuntimeFlag('lastOrdersSyncAt', new Date().toISOString());
+      return orders;
+    }
+
     const orders = await fetchOrders(shopId);
     A.orders = orders;
     setRuntimeFlag('ordersHydrated', true);
@@ -358,6 +408,15 @@ export async function fetchProducts() {
 
 // ── Stock ──────────────────────────────────────────────────
 export async function fetchStock(entityId) {
+  if (isTestMode()) {
+    return Object.entries(A.stock?.[entityId] || {}).map(([productId, stock]) => ({
+      entityId,
+      productId,
+      qty: Number(stock?.qty || 0),
+      alert: Number(stock?.alert || 0),
+    }));
+  }
+
   const sb = getSupabase();
   const rows = await tryQueries([
     () => sb.from('stock').select('*').eq('entity_id', entityId),
@@ -378,6 +437,15 @@ function buildStockPayloadVariants(entityId, productId, field, value) {
 }
 
 export async function updateStock(entityId, productId, field, value) {
+  if (isTestMode()) {
+    const nextStock = clone(A.stock || {});
+    if (!nextStock[entityId]) nextStock[entityId] = {};
+    if (!nextStock[entityId][productId]) nextStock[entityId][productId] = { qty: 0, alert: 0 };
+    nextStock[entityId][productId][field] = value;
+    persistLocalStock(nextStock);
+    return true;
+  }
+
   const sb = getSupabase();
   let lastError = null;
   for (const payload of buildStockPayloadVariants(entityId, productId, field, value)) {
@@ -397,6 +465,17 @@ export async function loadStockIntoState(entityIds = null) {
     : ['kitchen', ...SHOPS.map((shop) => shop.id)];
 
   try {
+    if (isTestMode()) {
+      const nextStock = clone(A.stock || {});
+      ids.forEach((id) => {
+        if (!nextStock[id]) nextStock[id] = {};
+      });
+      persistLocalStock(nextStock);
+      setRuntimeFlag('stockHydrated', true);
+      setRuntimeFlag('lastStockSyncAt', new Date().toISOString());
+      return nextStock;
+    }
+
     const nextStock = JSON.parse(JSON.stringify(A.stock || {}));
     ids.forEach((id) => {
       if (!nextStock[id]) nextStock[id] = {};

@@ -117,7 +117,7 @@ export const A = {
   lang: ld('lg', 'fr'),
 
   users:    ld('us', INIT_USERS),
-  orders:   [],
+  orders:   ld('or', []),
   ksends:   ld('ks', []),
   products: ld('pr', INIT_PRODUCTS.map((p) => ({ ...p, active: true, price: 0 }))),
   stock:    ld('st', initStock()),

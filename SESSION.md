@@ -16,7 +16,7 @@
 ## 2) RÉSUMÉ ULTRA-COURT
 - Runtime réel : app statique `index.html` + modules JS ES6, **pas React**.
 - Backend cible : Supabase comme **source de vérité unique**.
-- État réel : commandes + stock sont déjà branchés à Supabase avec hydratation, synchro live minimale et états UI visibles, le chat principal passe maintenant par Supabase pour les conversations/messages avec synchro live et runtime visuel, et l'accueil ouvre maintenant un accès test direct par boutons Admin/User sans mot de passe, mais photos, calendrier, admin users et boutiques restent encore à finaliser.
+- État réel : commandes + stock sont déjà branchés à Supabase avec hydratation, synchro live minimale et états UI visibles, le chat principal passe maintenant par Supabase pour les conversations/messages avec synchro live et runtime visuel, et l'accueil ouvre maintenant un accès test direct par boutons Admin/User sans mot de passe ; en mode test local, commandes et stock retombent en local si la clé Supabase front est invalide.
 
 ## 3) ÉTAT ACTUEL RÉEL
 ### Ce qui existe déjà
@@ -35,6 +35,7 @@
 ### Ce qui est déjà branché côté Supabase
 - Auth email / mot de passe toujours disponible côté backend cible
 - Accueil login basculé en accès test direct par boutons Admin/User sans mot de passe
+- Commandes et stock retombent en persistance locale en mode test si l'anon key front est invalide
 - Profil utilisateur
 - API : orders, shops, products, stock, messages, upload photo
 - Realtime : orders, messages
@@ -99,6 +100,7 @@
 - Mapping Supabase encore partiellement défensif car schéma distant pas encore totalement reflété dans le front
 - Faux sentiment de “fini” sur admin / calendrier / photos chat
 - Référentiel visuel ancien possiblement contradictoire avec le runtime actuel
+- La clé Supabase front actuelle répond `Invalid API key`, donc le mode test doit continuer à contourner la base
 
 ## 9) PLANNING D'AMÉLIORATION VIVANT
 > À mettre à jour à chaque session. Garder court. Mettre un seul statut par ligne.
@@ -136,12 +138,13 @@
 - Le chat principal passe désormais par Supabase avec conversations/messages réels, synchro live dédiée et runtime visuel
 - Le rendu chat ne doit jamais injecter brut les champs texte ou URL issus de Supabase
 - L'accueil login passe en mode test direct avec boutons Admin/User et persistance locale du profil choisi
+- En mode test, commandes et stock doivent fonctionner localement si Supabase renvoie `Invalid API key`
 
 ## 11) DERNIÈRE SESSION
 - Date : 2026-04-21
 - IA : Codex (GPT-5)
-- Fait : audit du repo local + reprise du `SESSION.md` + durcissement du rendu chat contre l'injection HTML + validation des URL d'image du chat + échappement des messages toast + remplacement de l'accueil par un accès test direct Admin/User sans mot de passe
-- Fichiers inspectés : `SESSION.md`, `js/utils.js`, `js/state.js`, `js/auth.js`, `js/modules/chat.js`, `js/views/chat.js`, `js/views/login.js`, `js/api/supabase.js`
+- Fait : audit du repo local + reprise du `SESSION.md` + durcissement du rendu chat contre l'injection HTML + validation des URL d'image du chat + échappement des messages toast + remplacement de l'accueil par un accès test direct Admin/User sans mot de passe + fallback local commandes/stock quand la clé Supabase front est invalide
+- Fichiers inspectés : `SESSION.md`, `js/utils.js`, `js/state.js`, `js/auth.js`, `js/modules/chat.js`, `js/views/chat.js`, `js/views/login.js`, `js/api/supabase.js`, `js/modules/orders.js`
 - Fichiers modifiés : `js/utils.js`, `js/views/chat.js`, `js/state.js`, `js/auth.js`, `js/views/login.js`, `js/api/supabase.js`, `SESSION.md`
 - Points ouverts : valider le chat sur la vraie base Supabase, puis brancher les photos chat ou attaquer boutiques/accès
 
