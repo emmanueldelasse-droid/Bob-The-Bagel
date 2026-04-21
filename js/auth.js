@@ -1,13 +1,12 @@
 /* ============================================================
    BOBtheBAGEL - js/auth.js
-   Authentification Supabase · Session · Droits
+   Acces test direct + session Supabase existante
    ============================================================ */
 
-import { A, resetOrdersRuntime, resetStockRuntime, resetChatRuntime } from './state.js';
-import { toast, render } from './utils.js';
+import { A, INIT_USERS, sv, resetOrdersRuntime, resetStockRuntime, resetChatRuntime } from './state.js';
+import { alog, toast, render, nISO } from './utils.js';
 import {
   getSupabase,
-  requestMagicLink,
   signOut,
   getCurrentProfile,
   loadOrdersIntoState,
@@ -21,12 +20,17 @@ import {
   stopChatRealtimeSync,
 } from './modules/chat.js';
 
-function showLoginMessage(text, type = 'error') {
-  const el = document.getElementById('le');
-  if (!el) return;
-  el.textContent = text;
-  el.style.display = 'block';
-  el.style.color = type === 'success' ? 'var(--green)' : 'var(--red)';
+function buildTestUser(role) {
+  const source = A.users.find((user) => user.role === role) || INIT_USERS.find((user) => user.role === role);
+  const fallbackName = role === 'admin' ? 'Admin' : 'User';
+
+  return {
+    id: source?.id || `test-${role}`,
+    name: source?.name || fallbackName,
+    role,
+    photo: source?.photo || null,
+    email: `${role}@test.local`,
+  };
 }
 
 function hydrateUser(profile) {
@@ -39,6 +43,21 @@ function hydrateUser(profile) {
   };
 }
 
+function logConnection(label) {
+  A.cLog = [{ user: label, time: nISO() }, ...A.cLog].slice(0, 100);
+  sv('cl', A.cLog);
+}
+
+function openDefaultView(role) {
+  A.selShop = null;
+  if (role === 'admin') {
+    A.admTab = 'banner';
+    A.view = 'admin';
+    return;
+  }
+  A.view = 'select';
+}
+
 async function startAuthenticatedApp() {
   await loadOrdersIntoState();
   await loadStockIntoState();
@@ -47,61 +66,17 @@ async function startAuthenticatedApp() {
   await startChatRealtimeSync();
 }
 
-export async function dLog() {
-  if (A.lLocked) return;
-
-  const email = document.getElementById('ln')?.value?.trim() || '';
-
-  if (!email) {
-    showLoginMessage('Email requis');
-    return;
-  }
-
-  try {
-    await requestMagicLink(email);
-    A.lAttempts = 0;
-    showLoginMessage('Lien de connexion envoyé. Ouvre ton email puis reviens ici.', 'success');
-    toast('Lien de connexion envoyé', 'success');
-  } catch (err) {
-    A.lAttempts++;
-    const msg = err?.message?.toLowerCase() || '';
-
-    if (msg.includes('network') || msg.includes('fetch')) {
-      showLoginMessage('Erreur reseau - verifier la connexion');
-    } else if (msg.includes('email') && (msg.includes('not') || msg.includes('unknown'))) {
-      showLoginMessage('Email inconnu ou non autorise');
-    } else if (msg.includes('otp') || msg.includes('magic') || msg.includes('disabled')) {
-      showLoginMessage('Connexion email non disponible pour le moment');
-    } else {
-      showLoginMessage('Envoi du lien impossible');
-    }
-
-    if (A.lAttempts >= 5) {
-      A.lLocked = true;
-      toast('Compte bloque 30 secondes', 'error');
-      setTimeout(() => {
-        A.lLocked = false;
-        A.lAttempts = 0;
-        render();
-      }, 30000);
-    }
-
-    console.warn('[BOB] magic link error:', err);
-  }
-}
-
-export async function logout() {
+async function clearRemoteSession() {
   try {
     await stopChatRealtimeSync();
     await stopRealtimeSync();
     await signOut();
-  } catch (e) {
-    console.warn('[BOB] signOut error:', e);
+  } catch (error) {
+    console.warn('[BOB] clearRemoteSession:', error);
   }
+}
 
-  A.cUser = null;
-  A.selShop = null;
-  A.view = 'login';
+function resetTransientState() {
   A.cart = {};
   A.note = '';
   A.search = '';
@@ -111,25 +86,65 @@ export async function logout() {
   resetOrdersRuntime();
   resetStockRuntime();
   resetChatRuntime();
+}
+
+function enterTestProfile(role) {
+  const safeRole = role === 'admin' ? 'admin' : 'user';
+  const user = buildTestUser(safeRole);
+
+  A.testProfile = safeRole;
+  sv('tp', safeRole);
+  A.lAttempts = 0;
+  A.lLocked = false;
+  A.cUser = user;
+  resetTransientState();
+  logConnection(`${user.name} (test)`);
+  alog(`Acces test: ${user.name}`);
+  openDefaultView(safeRole);
+  render();
+}
+
+export async function dLog(role = 'user') {
+  await clearRemoteSession();
+  enterTestProfile(role);
+}
+
+export async function logout() {
+  await clearRemoteSession();
+
+  A.cUser = null;
+  A.testProfile = null;
+  sv('tp', null);
+  A.view = 'login';
+  resetTransientState();
   render();
 }
 
 export async function restoreSession() {
   try {
     const sb = getSupabase();
-    if (!sb) return false;
+    if (sb) {
+      const { data } = await sb.auth.getSession();
+      if (data?.session) {
+        const profile = await getCurrentProfile();
+        if (profile) {
+          A.testProfile = null;
+          sv('tp', null);
+          hydrateUser(profile);
+          await startAuthenticatedApp();
+          A.view = A.view === 'login' ? 'select' : A.view;
+          return true;
+        }
+      }
+    }
 
-    const { data } = await sb.auth.getSession();
-    if (!data?.session) return false;
+    if (A.testProfile) {
+      A.cUser = buildTestUser(A.testProfile);
+      openDefaultView(A.testProfile);
+      return true;
+    }
 
-    const profile = await getCurrentProfile();
-    if (!profile) return false;
-
-    hydrateUser(profile);
-    await startAuthenticatedApp();
-
-    A.view = A.view === 'login' ? 'select' : A.view;
-    return true;
+    return false;
   } catch (e) {
     console.warn('[BOB] restoreSession error:', e);
     return false;

@@ -16,7 +16,7 @@
 ## 2) RÉSUMÉ ULTRA-COURT
 - Runtime réel : app statique `index.html` + modules JS ES6, **pas React**.
 - Backend cible : Supabase comme **source de vérité unique**.
-- État réel : commandes + stock sont déjà branchés à Supabase avec hydratation, synchro live minimale et états UI visibles, le chat principal passe maintenant par Supabase pour les conversations/messages avec synchro live et runtime visuel, et l'accueil login passe temporairement par lien magique email sans champ mot de passe, mais photos, calendrier, admin users et boutiques restent encore à finaliser.
+- État réel : commandes + stock sont déjà branchés à Supabase avec hydratation, synchro live minimale et états UI visibles, le chat principal passe maintenant par Supabase pour les conversations/messages avec synchro live et runtime visuel, et l'accueil ouvre maintenant un accès test direct par boutons Admin/User sans mot de passe, mais photos, calendrier, admin users et boutiques restent encore à finaliser.
 
 ## 3) ÉTAT ACTUEL RÉEL
 ### Ce qui existe déjà
@@ -33,8 +33,8 @@
 - Profil front
 
 ### Ce qui est déjà branché côté Supabase
-- Auth email / mot de passe
-- Accueil login temporairement basculé en lien magique email Supabase
+- Auth email / mot de passe toujours disponible côté backend cible
+- Accueil login basculé en accès test direct par boutons Admin/User sans mot de passe
 - Profil utilisateur
 - API : orders, shops, products, stock, messages, upload photo
 - Realtime : orders, messages
@@ -135,14 +135,14 @@
 - La fiabilité passe maintenant aussi par la synchro live minimale et par des états UI visibles loading/error
 - Le chat principal passe désormais par Supabase avec conversations/messages réels, synchro live dédiée et runtime visuel
 - Le rendu chat ne doit jamais injecter brut les champs texte ou URL issus de Supabase
-- L'accueil login retire temporairement le champ mot de passe et passe par lien magique email
+- L'accueil login passe en mode test direct avec boutons Admin/User et persistance locale du profil choisi
 
 ## 11) DERNIÈRE SESSION
 - Date : 2026-04-21
 - IA : Codex (GPT-5)
-- Fait : audit du repo local + reprise du `SESSION.md` + durcissement du rendu chat contre l'injection HTML + validation des URL d'image du chat + échappement des messages toast + retrait temporaire du mot de passe à l'accueil au profit d'un lien magique email
+- Fait : audit du repo local + reprise du `SESSION.md` + durcissement du rendu chat contre l'injection HTML + validation des URL d'image du chat + échappement des messages toast + remplacement de l'accueil par un accès test direct Admin/User sans mot de passe
 - Fichiers inspectés : `SESSION.md`, `js/utils.js`, `js/state.js`, `js/auth.js`, `js/modules/chat.js`, `js/views/chat.js`, `js/views/login.js`, `js/api/supabase.js`
-- Fichiers modifiés : `js/utils.js`, `js/views/chat.js`, `js/auth.js`, `js/views/login.js`, `js/api/supabase.js`, `SESSION.md`
+- Fichiers modifiés : `js/utils.js`, `js/views/chat.js`, `js/state.js`, `js/auth.js`, `js/views/login.js`, `js/api/supabase.js`, `SESSION.md`
 - Points ouverts : valider le chat sur la vraie base Supabase, puis brancher les photos chat ou attaquer boutiques/accès
 
 ## 12) FORMAT OBLIGATOIRE POUR TOUTE IA

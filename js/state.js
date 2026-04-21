@@ -135,6 +135,7 @@ export const A = {
   seen:   ld('sn', {}),
 
   cUser:   null,
+  testProfile: ld('tp', null),
   selShop: null,
 
   sTab:  'order',
@@ -226,13 +227,14 @@ export function sv(k, v) {
 }
 
 export function clearAll() {
-  ['dk','lg','us','or','ks','pr','st','rc','sl','al','cl','bn','sn','msg','conv','ev','chat_seen'].forEach((k) => {
+  ['dk','lg','us','or','ks','pr','st','rc','sl','al','cl','bn','sn','msg','conv','ev','chat_seen','tp'].forEach((k) => {
     localStorage.removeItem(k);
   });
   A.orders = [];
   A.messages = [];
   A.conversations = [];
   A.chatSeen = {};
+  A.testProfile = null;
   resetOrdersRuntime();
   resetStockRuntime();
   resetChatRuntime();
