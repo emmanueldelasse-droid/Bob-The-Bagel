@@ -12,6 +12,98 @@ import { bCalendar, calBadge, calDashboardWidget } from './calendar.js';
 import { totalUnread } from '../modules/chat.js';
 import { getLowStock, stockLevel } from '../modules/stock.js';
 
+function runtimePanel({ kind = 'info', title, text, meta = '' }) {
+  const tones = {
+    info: {
+      bg: A.dark ? '#1C2433' : '#EFF6FF',
+      border: A.dark ? '#2E4C77' : '#BFDBFE',
+      color: A.dark ? '#BFDBFE' : '#1D4ED8',
+      icon: '⏳',
+    },
+    warn: {
+      bg: A.dark ? '#2D1B00' : '#FFF7ED',
+      border: A.dark ? '#7C4A03' : '#FED7AA',
+      color: A.dark ? '#FCD34D' : '#9A3412',
+      icon: '⚠️',
+    },
+    ok: {
+      bg: A.dark ? '#10261A' : '#ECFDF5',
+      border: A.dark ? '#1F5C3A' : '#BBF7D0',
+      color: A.dark ? '#86EFAC' : '#166534',
+      icon: '✓',
+    },
+  };
+  const tone = tones[kind] || tones.info;
+
+  return `
+    <div style="background:${tone.bg};border:1px solid ${tone.border};border-radius:8px;padding:10px 12px;margin:0 14px 12px;color:${tone.color}">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <div style="font-size:14px;line-height:1.2">${tone.icon}</div>
+        <div style="min-width:0">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:12px;letter-spacing:.2px">${title}</div>
+          <div style="font-size:12px;line-height:1.45;margin-top:2px">${text}</div>
+          ${meta ? `<div style="font-size:11px;opacity:.85;margin-top:4px">${meta}</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+function ordersRuntimeNotice() {
+  const r = A.runtime || {};
+  if (r.ordersLoading && !r.ordersHydrated) {
+    return runtimePanel({
+      kind: 'info',
+      title: 'Chargement des commandes',
+      text: 'Les commandes sont en cours de synchronisation avec la base.',
+    });
+  }
+  if (r.ordersError) {
+    return runtimePanel({
+      kind: 'warn',
+      title: 'Synchronisation commandes incomplète',
+      text: r.ordersError,
+      meta: r.lastOrdersSyncAt ? `Dernière synchro OK : ${fD(r.lastOrdersSyncAt)} · ${fT(r.lastOrdersSyncAt)}` : 'Aucune synchro confirmée pour le moment.',
+    });
+  }
+  if (r.ordersHydrated && r.lastOrdersSyncAt) {
+    return runtimePanel({
+      kind: 'ok',
+      title: 'Commandes synchronisées',
+      text: 'La vue commandes utilise les données Supabase.',
+      meta: `Dernière synchro : ${fD(r.lastOrdersSyncAt)} · ${fT(r.lastOrdersSyncAt)}`,
+    });
+  }
+  return '';
+}
+
+function stockRuntimeNotice() {
+  const r = A.runtime || {};
+  if (r.stockLoading && !r.stockHydrated) {
+    return runtimePanel({
+      kind: 'info',
+      title: 'Chargement du stock',
+      text: 'Le stock de la boutique est en cours de synchronisation avec la base.',
+    });
+  }
+  if (r.stockError) {
+    return runtimePanel({
+      kind: 'warn',
+      title: 'Synchronisation stock incomplète',
+      text: r.stockError,
+      meta: r.lastStockSyncAt ? `Dernière synchro OK : ${fD(r.lastStockSyncAt)} · ${fT(r.lastStockSyncAt)}` : 'Aucune synchro confirmée pour le moment.',
+    });
+  }
+  if (r.stockHydrated && r.lastStockSyncAt) {
+    return runtimePanel({
+      kind: 'ok',
+      title: 'Stock synchronisé',
+      text: 'Les niveaux affichés proviennent de Supabase.',
+      meta: `Dernière synchro : ${fD(r.lastStockSyncAt)} · ${fT(r.lastStockSyncAt)}`,
+    });
+  }
+  return '';
+}
+
 // ─────────────────────────────────────────────────────────────
 // HEADER
 // ─────────────────────────────────────────────────────────────
@@ -70,7 +162,6 @@ function productRow(p, sh) {
   const level = sh ? stockLevel(sh.id, p.id) : 'ok';
   const stock = sh ? (A.stock[sh.id]?.[p.id]?.qty ?? '—') : null;
 
-  // Couleurs dynamiques selon état
   const rowBg   = hasQ ? 'var(--lgreen)' : 'var(--bg2)';
   const bdrColor = hasQ ? 'var(--green)' : 'var(--border)';
   const plusBg  = hasQ ? 'var(--green)' : 'var(--bg3)';
@@ -86,7 +177,6 @@ function productRow(p, sh) {
       gap:10px;
       transition:background .1s
     ">
-      <!-- NOM + META : flex:1 mais avec min-width:0 pour truncate -->
       <div style="flex:1;min-width:0">
         <div style="
           font-family:'Space Grotesk',sans-serif;
@@ -108,7 +198,6 @@ function productRow(p, sh) {
         </div>
       </div>
 
-      <!-- CONTRÔLE QTÉ — taille fixe, collé au nom -->
       <div style="
         display:flex;
         align-items:center;
@@ -158,9 +247,6 @@ function productRow(p, sh) {
     </div>`;
 }
 
-// ─────────────────────────────────────────────────────────────
-// ONGLET COMMANDER
-// ─────────────────────────────────────────────────────────────
 function tabOrder() {
   const cats      = oCats();
   const sh        = A.selShop;
@@ -172,11 +258,8 @@ function tabOrder() {
 
   return `
     <div style="padding-bottom:72px;max-width:720px;width:100%;margin:0 auto">
-
-      <!-- Encart calendrier -->
       ${calDashboardWidget()}
 
-      <!-- Barre recherche + livraison -->
       <div style="
         padding:10px 14px;
         background:var(--bg2);
@@ -185,7 +268,6 @@ function tabOrder() {
         flex-direction:column;
         gap:7px
       ">
-        <!-- Recherche -->
         <input
           placeholder="Rechercher un produit…"
           value="${A.search || ''}"
@@ -202,7 +284,6 @@ function tabOrder() {
           onblur="this.style.borderColor='var(--border)'"
         />
 
-        <!-- Date + heure sur UNE ligne compacte -->
         <div style="display:flex;align-items:center;gap:8px">
           <span style="
             font-family:'Syne',sans-serif;font-weight:700;
@@ -239,7 +320,6 @@ function tabOrder() {
         </div>
       </div>
 
-      <!-- Catalogue -->
       ${cats.map(cat => {
         const search = (A.search || '').toLowerCase();
         const prods  = aP().filter(p => p.cat === cat && (!search || p.name.toLowerCase().includes(search)));
@@ -249,7 +329,6 @@ function tabOrder() {
         const noSub = prods.filter(p => !p.sub);
 
         return `
-          <!-- Séparateur catégorie -->
           <div style="
             display:flex;align-items:center;gap:10px;
             padding:12px 14px 6px;
@@ -280,7 +359,6 @@ function tabOrder() {
         `;
       }).join('')}
 
-      <!-- Note -->
       <div style="padding:14px;border-top:1px solid var(--border);background:var(--bg2);margin-top:8px">
         <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--txt3);margin-bottom:6px">
           Note opérationnelle
@@ -304,7 +382,6 @@ function tabOrder() {
 
     </div>
 
-    <!-- Footer sticky envoi -->
     <div style="
       position:fixed;bottom:0;left:50%;transform:translateX(-50%);
       width:100%;max-width:720px;
@@ -342,24 +419,31 @@ function tabOrder() {
     ${A.summary ? bSum() : ''}`;
 }
 
-// ─────────────────────────────────────────────────────────────
-// ONGLET COMMANDES
-// ─────────────────────────────────────────────────────────────
 function tabOrders() {
-  const sh     = A.selShop;
+  const sh = A.selShop;
   const orders = A.orders.filter(o => o.shopId === sh?.id);
+  const notice = ordersRuntimeNotice();
+  const loadingOnly = A.runtime.ordersLoading && !A.runtime.ordersHydrated;
+
+  if (!orders.length && loadingOnly) {
+    return `<div style="padding:14px;max-width:720px;width:100%;margin:0 auto">${notice}</div>`;
+  }
 
   if (!orders.length) return `
-    <div style="padding:60px 20px;text-align:center">
-      <div style="font-size:28px;margin-bottom:10px">📋</div>
-      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--txt)">Aucune commande</div>
-      <div style="font-size:13px;color:var(--txt2);margin-top:4px">Vos commandes apparaîtront ici.</div>
+    <div style="padding:14px;max-width:720px;width:100%;margin:0 auto">
+      ${notice}
+      <div style="padding:60px 20px;text-align:center">
+        <div style="font-size:28px;margin-bottom:10px">📋</div>
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--txt)">Aucune commande</div>
+        <div style="font-size:13px;color:var(--txt2);margin-top:4px">Vos commandes apparaîtront ici.</div>
+      </div>
     </div>`;
 
   return `
     <div style="padding:14px;max-width:720px;width:100%;margin:0 auto">
+      ${notice}
       ${orders.map(o => {
-        const st   = ORDER_STATUSES[o.status] || {};
+        const st = ORDER_STATUSES[o.status] || {};
         const open = A['oO_' + o.id];
 
         return `
@@ -372,7 +456,6 @@ function tabOrders() {
             overflow:hidden;
             box-shadow:var(--sh)
           ">
-            <!-- Header commande -->
             <div
               onclick="window.__BOB__.tO('${o.id}')"
               style="padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;cursor:pointer"
@@ -433,18 +516,18 @@ function tabOrders() {
     </div>`;
 }
 
-// ─────────────────────────────────────────────────────────────
-// ONGLET STOCK
-// ─────────────────────────────────────────────────────────────
 function tabStock() {
-  const sh   = A.selShop;
+  const sh = A.selShop;
   if (!sh) return '';
   const cats = oCats();
   const lows = getLowStock(sh.id);
+  const notice = stockRuntimeNotice();
+  const loadingOnly = A.runtime.stockLoading && !A.runtime.stockHydrated;
 
   return `
     <div style="padding:14px;max-width:720px;width:100%;margin:0 auto">
-      ${lows.length > 0 ? `
+      ${notice}
+      ${loadingOnly ? '' : lows.length > 0 ? `
         <div style="
           background:${A.dark ? '#2D1B00' : '#FFF7ED'};
           border:1px solid #FED7AA;
@@ -459,7 +542,7 @@ function tabStock() {
         </div>
       ` : ''}
 
-      ${cats.map(cat => {
+      ${loadingOnly ? '' : cats.map(cat => {
         const prods = aP().filter(p => p.cat === cat);
         return `
           <div style="display:flex;align-items:center;gap:10px;padding:10px 0 5px">
@@ -468,7 +551,7 @@ function tabStock() {
             <div style="flex:1;height:1px;background:var(--border)"></div>
           </div>
           ${prods.map(p => {
-            const s   = (A.stock[sh.id] || {})[p.id] || { qty: 0, alert: 10 };
+            const s = (A.stock[sh.id] || {})[p.id] || { qty: 0, alert: 10 };
             const low = s.qty <= s.alert;
             return `
               <div style="
@@ -493,9 +576,6 @@ function tabStock() {
     </div>`;
 }
 
-// ─────────────────────────────────────────────────────────────
-// ONGLET PROFIL
-// ─────────────────────────────────────────────────────────────
 function tabProfile() {
   const u = A.cUser;
   if (!u) return '';
@@ -560,9 +640,6 @@ function tabProfile() {
     </div>`;
 }
 
-// ─────────────────────────────────────────────────────────────
-// VUE BOUTIQUE PRINCIPALE
-// ─────────────────────────────────────────────────────────────
 export function bShop() {
   const tabs = [
     { id: 'order',   label: 'Commander',  icon: '🛒' },
@@ -588,7 +665,6 @@ export function bShop() {
     <div style="min-height:100vh;background:var(--bg);display:flex;flex-direction:column">
       ${shopHeader()}
 
-      <!-- Tabs -->
       <div style="
         display:flex;
         background:var(--bg2);
@@ -614,7 +690,6 @@ export function bShop() {
         `).join('')}
       </div>
 
-      <!-- Contenu -->
       <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch" class="fade">
         ${content}
       </div>
