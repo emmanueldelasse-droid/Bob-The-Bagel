@@ -5,7 +5,16 @@
 
 import { A, sv, resetOrdersRuntime, resetStockRuntime } from './state.js';
 import { alog, toast, render, nISO } from './utils.js';
-import { getSupabase, signIn, signOut, getCurrentProfile, loadOrdersIntoState, loadStockIntoState } from './api/supabase.js';
+import {
+  getSupabase,
+  signIn,
+  signOut,
+  getCurrentProfile,
+  loadOrdersIntoState,
+  loadStockIntoState,
+  startRealtimeSync,
+  stopRealtimeSync,
+} from './api/supabase.js';
 
 export async function dLog() {
   if (A.lLocked) return;
@@ -47,6 +56,7 @@ export async function dLog() {
 
     await loadOrdersIntoState();
     await loadStockIntoState();
+    await startRealtimeSync();
 
     A.view = 'select';
     render();
@@ -81,6 +91,7 @@ export async function dLog() {
 
 export async function logout() {
   try {
+    await stopRealtimeSync();
     await signOut();
   } catch (e) {
     console.warn('[BOB] signOut error:', e);
@@ -119,6 +130,7 @@ export async function restoreSession() {
 
     await loadOrdersIntoState();
     await loadStockIntoState();
+    await startRealtimeSync();
 
     A.view = A.view === 'login' ? 'select' : A.view;
     return true;
