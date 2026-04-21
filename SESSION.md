@@ -16,7 +16,7 @@
 ## 2) RÉSUMÉ ULTRA-COURT
 - Runtime réel : app statique `index.html` + modules JS ES6, **pas React**.
 - Backend cible : Supabase comme **source de vérité unique**.
-- État réel : app partiellement branchée à Supabase mais cœur métier encore trop piloté par `localStorage`.
+- État réel : commandes principales désormais hydratées via Supabase, mais le reste du métier dépend encore trop du `localStorage`.
 
 ## 3) ÉTAT ACTUEL RÉEL
 ### Ce qui existe déjà
@@ -37,9 +37,10 @@
 - Profil utilisateur
 - API : orders, shops, products, stock, messages, upload photo
 - Realtime : orders, messages
+- Hydratation des commandes au login / restore session
+- Création et mises à jour principales de commandes via helpers Supabase avec mapping défensif
 
 ### Ce qui reste faux / incomplet
-- Commandes encore locales
 - Stock encore local
 - Chat encore local
 - Calendrier encore local
@@ -49,6 +50,7 @@
 - Droits par boutique non réellement appliqués
 - Admin ne gère pas encore ajout/suppression boutiques
 - Photos chat non branchées dans l'UI finale
+- Couche commandes encore à fiabiliser selon le vrai schéma Supabase en production
 
 ## 4) STACK RÉELLE
 - Frontend : HTML + CSS + JavaScript ES6 modulaire
@@ -57,7 +59,7 @@
 - Router : `js/router.js`
 - Backend : Supabase
 - Auth : Supabase Auth
-- Persistance actuelle : mixte Supabase + `localStorage`
+- Persistance actuelle : commandes via Supabase + reste encore mixte avec `localStorage`
 
 ## 5) DÉCISION CADRE
 - Ne **pas** lancer de réécriture React maintenant.
@@ -86,10 +88,11 @@
 - `js/views/chat.js`
 
 ## 7) PROCHAINE ACTION UNIQUE
-**NEXT_ACTION** : lancer la sortie du cœur métier hors de `localStorage` en commençant par `state.js` + boot + commandes.
+**NEXT_ACTION** : fiabiliser la couche commandes branchée à Supabase, puis attaquer `stock` pour sortir le deuxième gros bloc métier du `localStorage`.
 
 ## 8) BLOCAGES / RISQUES
-- App hybride = comportement non fiable en multi-utilisateur réel
+- App encore hybride = comportement non totalement fiable en multi-utilisateur réel
+- Mapping commandes Supabase volontairement défensif car schéma distant pas encore figé dans le repo
 - Faux sentiment de “fini” sur plusieurs écrans admin / chat / calendrier
 - Référentiel visuel ancien possiblement contradictoire avec le runtime actuel
 
@@ -103,9 +106,9 @@
 | A1 | Corriger `README.md` | DONE | P0 | Repo cohérent avec le vrai projet |
 | A2 | Garder `SESSION.md` compact et à jour | DOING | P0 | Reprise rapide inter-IA |
 | B1 | Geler la base actuelle HTML/JS comme base officielle | TODO | P0 | Pas de réécriture prématurée |
-| C1 | Faire de Supabase la source de vérité unique | TODO | P0 | Fin du mix Supabase/localStorage |
-| D1 | Reprendre `state.js` + boot + séparation UI/données métier | TODO | P0 | Noyau propre |
-| E1 | Brancher les commandes réellement sur Supabase | TODO | P0 | Commandes cohérentes boutique/cuisine |
+| C1 | Faire de Supabase la source de vérité unique | DOING | P0 | Fin du mix Supabase/localStorage |
+| D1 | Reprendre `state.js` + boot + séparation UI/données métier | DOING | P0 | Noyau propre |
+| E1 | Brancher les commandes réellement sur Supabase | DOING | P0 | Commandes cohérentes boutique/cuisine |
 | F1 | Brancher le stock réellement sur Supabase | TODO | P0 | Stock partagé fiable |
 | G1 | Refaire l'admin utilisateurs avec vrai flux Supabase Auth | TODO | P0 | Création de comptes réellement utilisables |
 | H1 | Sortir les boutiques du hardcode `SHOPS` | TODO | P1 | Boutiques dynamiques |
@@ -123,13 +126,15 @@
 - Supabase = cible unique pour la donnée métier
 - Le planning ci-dessus est le backlog officiel à maintenir
 - Le `README.md` doit rester aligné avec la réalité du projet
+- Les commandes passent désormais par une couche Supabase défensive avant d'attaquer le stock
 
 ## 11) DERNIÈRE SESSION
 - Date : 2026-04-21
 - IA : ChatGPT (GPT-5.4 Thinking)
-- Fait : audit réel du repo + réécriture du référentiel + création du backlog vivant + correction du `README.md`
-- Fichiers inspectés : `SESSION.md`, `README.md`, `index.html`, `css/base.css`, `js/state.js`, `js/utils.js`, `js/router.js`, `js/auth.js`, `js/api/supabase.js`, modules et vues principales
-- Fichiers modifiés : `SESSION.md`, `README.md`
+- Fait : audit réel du repo + réécriture du référentiel + création du backlog vivant + correction du `README.md` + première bascule commandes vers Supabase
+- Fichiers inspectés : `SESSION.md`, `README.md`, `index.html`, `js/state.js`, `js/auth.js`, `js/api/supabase.js`, `js/modules/orders.js`
+- Fichiers modifiés : `README.md`, `SESSION.md`, `js/state.js`, `js/api/supabase.js`, `js/modules/orders.js`, `js/auth.js`, `index.html`
+- Points ouverts : vérifier le comportement réel avec le schéma Supabase distant, puis migrer le stock
 
 ## 12) FORMAT OBLIGATOIRE POUR TOUTE IA
 ### Au démarrage
