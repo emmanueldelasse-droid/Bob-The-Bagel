@@ -3,170 +3,155 @@
    Interface messagerie interne
    ============================================================ */
 
-import { A }  from '../state.js';
+import { A } from '../state.js';
 import { fD, fT } from '../utils.js';
-import { isAdmin } from '../auth.js';
 import {
   messagesForConv,
   unreadForConv,
   totalUnread,
-  selectConv,
 } from '../modules/chat.js';
 
-// ─────────────────────────────────────────────────────────────
-// COULEURS RÔLES
-// ─────────────────────────────────────────────────────────────
 function roleColor(role) {
-  if (role === 'admin')   return '#E8294B';
+  if (role === 'admin') return '#E8294B';
   if (role === 'kitchen') return '#D97706';
   return '#2563EB';
 }
 
 function roleLabel(role) {
-  if (role === 'admin')   return 'Admin';
+  if (role === 'admin') return 'Admin';
   if (role === 'kitchen') return 'Cuisine';
   return 'Boutique';
 }
 
-// ─────────────────────────────────────────────────────────────
-// BULLE MESSAGE
-// ─────────────────────────────────────────────────────────────
-function msgBubble(m) {
-  const isMe    = m.senderId === A.cUser?.id;
-  const isUrgent = m.priority === 'urgent';
+function runtimePanel({ kind = 'info', title, text, meta = '' }) {
+  const tones = {
+    info: {
+      bg: A.dark ? '#1C2433' : '#EFF6FF',
+      border: A.dark ? '#2E4C77' : '#BFDBFE',
+      color: A.dark ? '#BFDBFE' : '#1D4ED8',
+      icon: '⏳',
+    },
+    warn: {
+      bg: A.dark ? '#2D1B00' : '#FFF7ED',
+      border: A.dark ? '#7C4A03' : '#FED7AA',
+      color: A.dark ? '#FCD34D' : '#9A3412',
+      icon: '⚠️',
+    },
+    ok: {
+      bg: A.dark ? '#10261A' : '#ECFDF5',
+      border: A.dark ? '#1F5C3A' : '#BBF7D0',
+      color: A.dark ? '#86EFAC' : '#166534',
+      icon: '✓',
+    },
+  };
+  const tone = tones[kind] || tones.info;
 
-  const bubbleBg  = isMe
+  return `
+    <div style="background:${tone.bg};border:1px solid ${tone.border};border-radius:8px;padding:10px 12px;margin:0 14px 12px;color:${tone.color}">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <div style="font-size:14px;line-height:1.2">${tone.icon}</div>
+        <div style="min-width:0">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:12px;letter-spacing:.2px">${title}</div>
+          <div style="font-size:12px;line-height:1.45;margin-top:2px">${text}</div>
+          ${meta ? `<div style="font-size:11px;opacity:.85;margin-top:4px">${meta}</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+function chatRuntimeNotice() {
+  const r = A.runtime || {};
+  if (r.chatLoading && !r.chatHydrated) {
+    return runtimePanel({
+      kind: 'info',
+      title: 'Chargement des messages',
+      text: 'Les conversations sont en cours de synchronisation avec Supabase.',
+    });
+  }
+  if (r.chatError) {
+    return runtimePanel({
+      kind: 'warn',
+      title: 'Synchronisation chat incomplète',
+      text: r.chatError,
+      meta: r.lastChatSyncAt ? `Dernière synchro OK : ${fD(r.lastChatSyncAt)} · ${fT(r.lastChatSyncAt)}` : 'Aucune synchro confirmée pour le moment.',
+    });
+  }
+  if (r.chatHydrated && r.lastChatSyncAt) {
+    return runtimePanel({
+      kind: 'ok',
+      title: 'Chat synchronisé',
+      text: 'Les conversations et messages affichés proviennent de Supabase.',
+      meta: `Dernière synchro : ${fD(r.lastChatSyncAt)} · ${fT(r.lastChatSyncAt)}`,
+    });
+  }
+  return '';
+}
+
+function msgBubble(message) {
+  const isMe = message.senderId === A.cUser?.id;
+  const isUrgent = message.priority === 'urgent';
+
+  const bubbleBg = isMe
     ? 'var(--txt)'
     : isUrgent
       ? (A.dark ? '#3D1515' : '#FFF1F1')
       : 'var(--bg2)';
 
   const bubbleClr = isMe ? 'var(--bg2)' : 'var(--txt)';
-  const align     = isMe ? 'flex-end' : 'flex-start';
+  const align = isMe ? 'flex-end' : 'flex-start';
 
   return `
-    <div style="
-      display:flex;
-      flex-direction:column;
-      align-items:${align};
-      margin-bottom:10px;
-      max-width:100%
-    ">
-      <!-- Expéditeur (affiché seulement si pas moi) -->
+    <div style="display:flex;flex-direction:column;align-items:${align};margin-bottom:10px;max-width:100%">
       ${!isMe ? `
-        <div style="
-          display:flex;align-items:center;gap:6px;
-          margin-bottom:3px;padding:0 2px
-        ">
-          <div style="
-            width:20px;height:20px;border-radius:6px;
-            background:${roleColor(m.senderRole)};
-            display:flex;align-items:center;justify-content:center;
-            font-size:10px;font-weight:700;color:#fff;flex-shrink:0
-          ">${m.senderName?.[0] || '?'}</div>
-          <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:11px;color:var(--txt2)">${m.senderName}</span>
-          <span style="font-size:10px;color:var(--txt3)">${roleLabel(m.senderRole)}</span>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;padding:0 2px">
+          <div style="width:20px;height:20px;border-radius:6px;background:${roleColor(message.senderRole)};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${message.senderName?.[0] || '?'}</div>
+          <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:11px;color:var(--txt2)">${message.senderName}</span>
+          <span style="font-size:10px;color:var(--txt3)">${roleLabel(message.senderRole)}</span>
         </div>
       ` : ''}
 
-      <!-- Bulle -->
-      <div style="
-        max-width:72%;
-        padding:9px 13px;
-        border-radius:${isMe ? '12px 12px 3px 12px' : '12px 12px 12px 3px'};
-        background:${bubbleBg};
-        color:${bubbleClr};
-        box-shadow:var(--sh);
-        border:1px solid ${isUrgent && !isMe ? '#FECACA' : 'transparent'};
-        word-break:break-word;
-        position:relative
-      ">
+      <div style="max-width:72%;padding:9px 13px;border-radius:${isMe ? '12px 12px 3px 12px' : '12px 12px 12px 3px'};background:${bubbleBg};color:${bubbleClr};box-shadow:var(--sh);border:1px solid ${isUrgent && !isMe ? '#FECACA' : 'transparent'};word-break:break-word;position:relative">
         ${isUrgent ? `
-          <div style="
-            font-family:'Syne',sans-serif;font-weight:700;
-            font-size:9px;letter-spacing:1.5px;text-transform:uppercase;
-            color:${isMe ? 'rgba(255,255,255,.6)' : '#E8294B'};
-            margin-bottom:4px;display:flex;align-items:center;gap:4px
-          ">🚨 URGENT</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:${isMe ? 'rgba(255,255,255,.6)' : '#E8294B'};margin-bottom:4px;display:flex;align-items:center;gap:4px">🚨 URGENT</div>
         ` : ''}
-        <div style="font-size:13px;line-height:1.5">${m.content}</div>
-        <div style="
-          font-size:10px;
-          color:${isMe ? 'rgba(255,255,255,.5)' : 'var(--txt3)'};
-          margin-top:4px;text-align:right
-        ">${fT(m.createdAt)}</div>
+        <div style="font-size:13px;line-height:1.5">${message.content}</div>
+        ${message.photoUrl ? `
+          <div style="margin-top:8px">
+            <img src="${message.photoUrl}" alt="Photo message" style="max-width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.12);display:block" />
+          </div>
+        ` : ''}
+        <div style="font-size:10px;color:${isMe ? 'rgba(255,255,255,.5)' : 'var(--txt3)'};margin-top:4px;text-align:right">${fT(message.createdAt)}</div>
       </div>
-
-      <!-- Supprimer (admin) -->
-      ${isAdmin() ? `
-        <button
-          onclick="window.__BOB__.deleteMessage('${m.id}')"
-          style="
-            font-size:10px;color:var(--txt3);background:none;border:none;
-            cursor:pointer;padding:2px 4px;margin-top:2px;opacity:.5
-          "
-          onmouseover="this.style.opacity='1';this.style.color='var(--red)'"
-          onmouseout="this.style.opacity='.5';this.style.color='var(--txt3)'"
-        >✕</button>
-      ` : ''}
     </div>`;
 }
 
-// ─────────────────────────────────────────────────────────────
-// LISTE DES CONVERSATIONS (sidebar)
-// ─────────────────────────────────────────────────────────────
 function convList() {
-  const convs = A.conversations;
+  const conversations = A.conversations;
+  if (!conversations.length) {
+    return `<div style="padding:16px;font-size:12px;color:var(--txt3)">Aucune conversation disponible.</div>`;
+  }
 
-  return convs.map(conv => {
-    const unread   = unreadForConv(conv.id);
+  return conversations.map((conv) => {
+    const unread = unreadForConv(conv.id);
     const isActive = A.chatConvId === conv.id;
-    const lastMsg  = [...(A.messages.filter(m => m.convId === conv.id))]
+    const lastMsg = [...A.messages.filter((msg) => msg.convId === conv.id)]
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
 
     return `
       <button
         onclick="window.__BOB__.selectConv('${conv.id}')"
-        style="
-          width:100%;text-align:left;
-          padding:11px 14px;border:none;cursor:pointer;
-          background:${isActive ? 'var(--bg3)' : 'transparent'};
-          border-left:3px solid ${isActive ? 'var(--txt)' : 'transparent'};
-          transition:all .12s;
-          display:flex;align-items:center;gap:10px
-        "
+        style="width:100%;text-align:left;padding:11px 14px;border:none;cursor:pointer;background:${isActive ? 'var(--bg3)' : 'transparent'};border-left:3px solid ${isActive ? 'var(--txt)' : 'transparent'};transition:all .12s;display:flex;align-items:center;gap:10px"
         onmouseover="if(!${isActive})this.style.background='var(--bg3)'"
         onmouseout="if(!${isActive})this.style.background='transparent'"
       >
-        <!-- Icône -->
-        <div style="
-          width:36px;height:36px;border-radius:10px;
-          background:${conv.type === 'general' ? 'var(--txt)' : 'var(--bg)'};
-          border:1px solid var(--border);
-          display:flex;align-items:center;justify-content:center;
-          font-size:16px;flex-shrink:0
-        ">${conv.icon}</div>
-
-        <!-- Infos -->
+        <div style="width:36px;height:36px;border-radius:10px;background:${conv.type === 'general' ? 'var(--txt)' : 'var(--bg)'};border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${conv.icon}</div>
         <div style="flex:1;min-width:0">
-          <div style="
-            font-family:'Syne',sans-serif;font-weight:700;font-size:13px;
-            color:var(--txt);
-            display:flex;align-items:center;justify-content:space-between;gap:6px
-          ">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--txt);display:flex;align-items:center;justify-content:space-between;gap:6px">
             <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${conv.label}</span>
-            ${unread > 0 ? `
-              <span style="
-                background:var(--red);color:#fff;
-                font-size:10px;font-weight:700;
-                padding:1px 6px;border-radius:10px;flex-shrink:0
-              ">${unread}</span>
-            ` : ''}
+            ${unread > 0 ? `<span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;flex-shrink:0">${unread}</span>` : ''}
           </div>
           ${lastMsg ? `
-            <div style="font-size:11px;color:var(--txt3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-              ${lastMsg.senderName} : ${lastMsg.content}
-            </div>
+            <div style="font-size:11px;color:var(--txt3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${lastMsg.senderName} : ${lastMsg.content}</div>
           ` : `
             <div style="font-size:11px;color:var(--txt3);margin-top:2px">Aucun message</div>
           `}
@@ -175,208 +160,108 @@ function convList() {
   }).join('');
 }
 
-// ─────────────────────────────────────────────────────────────
-// ZONE SAISIE
-// ─────────────────────────────────────────────────────────────
-function inputZone() {
+function inputZone(activeConv) {
   const isUrgent = A.chatPriority === 'urgent';
+  const disabled = !activeConv;
 
   return `
-    <div style="
-      padding:10px 14px;
-      background:var(--bg2);
-      border-top:1px solid var(--border)
-    ">
-      <!-- Toggle urgence -->
+    <div style="padding:10px 14px;background:var(--bg2);border-top:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <button
-          onclick="window.__BOB__.setChatPriority(${isUrgent ? "'normal'" : "'urgent'"})"
-          style="
-            height:26px;padding:0 10px;border-radius:20px;
-            border:1.5px solid ${isUrgent ? 'var(--red)' : 'var(--border)'};
-            background:${isUrgent ? 'var(--red)' : 'transparent'};
-            color:${isUrgent ? '#fff' : 'var(--txt3)'};
-            font-family:'Syne',sans-serif;font-weight:700;font-size:10px;
-            letter-spacing:.5px;cursor:pointer;transition:all .12s;
-            display:flex;align-items:center;gap:4px
-          "
+          onclick="${disabled ? '' : `window.__BOB__.setChatPriority(${isUrgent ? "'normal'" : "'urgent'"})` }"
+          style="height:26px;padding:0 10px;border-radius:20px;border:1.5px solid ${isUrgent ? 'var(--red)' : 'var(--border)'};background:${isUrgent ? 'var(--red)' : 'transparent'};color:${isUrgent ? '#fff' : 'var(--txt3)'};font-family:'Syne',sans-serif;font-weight:700;font-size:10px;letter-spacing:.5px;cursor:${disabled ? 'default' : 'pointer'};transition:all .12s;display:flex;align-items:center;gap:4px;opacity:${disabled ? '.5' : '1'}"
         >🚨 URGENT</button>
-        ${isUrgent ? `<span style="font-size:11px;color:var(--red);font-weight:600">Mode urgent activé</span>` : ''}
+        ${isUrgent && !disabled ? `<span style="font-size:11px;color:var(--red);font-weight:600">Mode urgent activé</span>` : ''}
       </div>
 
-      <!-- Saisie + bouton -->
       <div style="display:flex;gap:8px;align-items:flex-end">
         <textarea
           id="chat-input"
-          placeholder="Écrire un message…"
+          placeholder="${disabled ? 'Aucune conversation disponible…' : 'Écrire un message…'}"
+          ${disabled ? 'disabled' : ''}
           oninput="window.__BOB__.setChatInput(this.value)"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();window.__BOB__.sendMessage()}"
-          style="
-            flex:1;
-            min-height:40px;max-height:120px;
-            padding:10px 12px;
-            border:1.5px solid ${isUrgent ? 'var(--red)' : 'var(--border)'};
-            border-radius:10px;
-            background:var(--bg);color:var(--txt);
-            font-family:'Space Grotesk',sans-serif;font-size:13px;
-            resize:none;outline:none;line-height:1.5;
-            transition:border-color .15s
-          "
+          style="flex:1;min-height:40px;max-height:120px;padding:10px 12px;border:1.5px solid ${isUrgent ? 'var(--red)' : 'var(--border)'};border-radius:10px;background:var(--bg);color:var(--txt);font-family:'Space Grotesk',sans-serif;font-size:13px;resize:none;outline:none;line-height:1.5;transition:border-color .15s;opacity:${disabled ? '.6' : '1'}"
           onfocus="this.style.borderColor='var(--txt)'"
           onblur="this.style.borderColor='${isUrgent ? 'var(--red)' : 'var(--border)'}'"
         >${A.chatInput || ''}</textarea>
 
         <button
-          onclick="window.__BOB__.sendMessage()"
-          style="
-            width:40px;height:40px;flex-shrink:0;
-            background:var(--txt);color:var(--bg2);
-            border:none;border-radius:10px;
-            font-size:18px;cursor:pointer;
-            display:flex;align-items:center;justify-content:center;
-            transition:opacity .12s
-          "
-          onmouseover="this.style.opacity='.8'"
-          onmouseout="this.style.opacity='1'"
+          onclick="${disabled ? '' : 'window.__BOB__.sendMessage()'}"
+          style="width:40px;height:40px;flex-shrink:0;background:var(--txt);color:var(--bg2);border:none;border-radius:10px;font-size:18px;cursor:${disabled ? 'default' : 'pointer'};display:flex;align-items:center;justify-content:center;transition:opacity .12s;opacity:${disabled ? '.5' : '1'}"
+          onmouseover="if(!${disabled})this.style.opacity='.8'"
+          onmouseout="this.style.opacity='${disabled ? '.5' : '1'}'"
         >↑</button>
       </div>
-      <div style="font-size:10px;color:var(--txt3);margin-top:5px;padding:0 2px">
-        Entrée pour envoyer · Shift+Entrée pour sauter une ligne
-      </div>
+      <div style="font-size:10px;color:var(--txt3);margin-top:5px;padding:0 2px">Entrée pour envoyer · Shift+Entrée pour sauter une ligne</div>
     </div>`;
 }
 
-// ─────────────────────────────────────────────────────────────
-// VUE CHAT PRINCIPALE
-// ─────────────────────────────────────────────────────────────
 export function bChat() {
-  const activeConv = A.conversations.find(c => c.id === A.chatConvId) || A.conversations[0];
-  const msgs       = activeConv ? messagesForConv(activeConv.id) : [];
-
-  // Sur mobile : si une conv est sélectionnée, on affiche le fil
-  // Sur desktop : sidebar + fil côte à côte
+  const activeConv = A.conversations.find((conv) => conv.id === A.chatConvId) || A.conversations[0] || null;
+  const msgs = activeConv ? messagesForConv(activeConv.id) : [];
+  const notice = chatRuntimeNotice();
+  const loadingOnly = A.runtime.chatLoading && !A.runtime.chatHydrated;
 
   return `
-    <div style="
-      max-width:720px;width:100%;margin:0 auto;
-      display:flex;flex-direction:column;
-      height:calc(100vh - 140px);
-      min-height:400px
-    ">
-
-      <!-- Layout desktop : sidebar + feed -->
-      <div style="display:flex;flex:1;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--bg2);margin:14px">
-
-        <!-- SIDEBAR conversations -->
-        <div style="
-          width:220px;flex-shrink:0;
-          border-right:1px solid var(--border);
-          overflow-y:auto;
-          display:flex;flex-direction:column
-        ">
-          <div style="
-            padding:12px 14px;
-            border-bottom:1px solid var(--border);
-            font-family:'Syne',sans-serif;font-weight:800;font-size:13px;
-            color:var(--txt);letter-spacing:-.2px
-          ">Messages</div>
+    <div style="max-width:720px;width:100%;margin:0 auto;display:flex;flex-direction:column;height:calc(100vh - 140px);min-height:400px">
+      <div style="padding-top:14px">${notice}</div>
+      <div style="display:flex;flex:1;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--bg2);margin:0 14px 14px">
+        <div style="width:220px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border);font-family:'Syne',sans-serif;font-weight:800;font-size:13px;color:var(--txt);letter-spacing:-.2px">Messages</div>
           ${convList()}
         </div>
 
-        <!-- CONTENU : fil + saisie -->
         <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden">
-
           ${activeConv ? `
-            <!-- Header conversation -->
-            <div style="
-              padding:12px 14px;
-              border-bottom:1px solid var(--border);
-              display:flex;align-items:center;gap:10px;
-              flex-shrink:0
-            ">
-              <div style="
-                width:32px;height:32px;border-radius:8px;
-                background:${activeConv.type === 'general' ? 'var(--txt)' : 'var(--bg3)'};
-                border:1px solid var(--border);
-                display:flex;align-items:center;justify-content:center;font-size:14px
-              ">${activeConv.icon}</div>
+            <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0">
+              <div style="width:32px;height:32px;border-radius:8px;background:${activeConv.type === 'general' ? 'var(--txt)' : 'var(--bg3)'};border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px">${activeConv.icon}</div>
               <div>
                 <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--txt)">${activeConv.label}</div>
                 <div style="font-size:11px;color:var(--txt3)">${msgs.length} message${msgs.length > 1 ? 's' : ''}</div>
               </div>
             </div>
 
-            <!-- Fil messages -->
-            <div
-              id="chat-feed"
-              style="
-                flex:1;overflow-y:auto;
-                padding:16px 14px;
-                display:flex;flex-direction:column;
-                -webkit-overflow-scrolling:touch;
-                scroll-behavior:smooth
-              "
-            >
-              ${msgs.length === 0 ? `
-                <div style="
-                  flex:1;display:flex;flex-direction:column;
-                  align-items:center;justify-content:center;
-                  padding:40px 20px;text-align:center
-                ">
+            <div id="chat-feed" style="flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;-webkit-overflow-scrolling:touch;scroll-behavior:smooth">
+              ${loadingOnly && !msgs.length ? `
+                <div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--txt2)">Synchronisation du fil en cours…</div>
+              ` : msgs.length === 0 ? `
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center">
                   <div style="font-size:32px;margin-bottom:10px">${activeConv.icon}</div>
-                  <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--txt);margin-bottom:4px">
-                    ${activeConv.label}
-                  </div>
-                  <div style="font-size:13px;color:var(--txt2)">
-                    Aucun message pour l'instant.<br>Soyez le premier à écrire.
-                  </div>
+                  <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--txt);margin-bottom:4px">${activeConv.label}</div>
+                  <div style="font-size:13px;color:var(--txt2)">Aucun message pour l'instant.<br>Soyez le premier à écrire.</div>
                 </div>
               ` : `
-                ${msgs.map((m, i) => {
-                  // Afficher la date si c'est un nouveau jour
-                  const prev = msgs[i - 1];
-                  const showDate = !prev || fD(m.createdAt) !== fD(prev.createdAt);
+                ${msgs.map((message, index) => {
+                  const prev = msgs[index - 1];
+                  const showDate = !prev || fD(message.createdAt) !== fD(prev.createdAt);
                   return `
                     ${showDate ? `
-                      <div style="
-                        text-align:center;margin:8px 0 14px;
-                        font-size:11px;font-weight:600;color:var(--txt3);
-                        display:flex;align-items:center;gap:8px
-                      ">
+                      <div style="text-align:center;margin:8px 0 14px;font-size:11px;font-weight:600;color:var(--txt3);display:flex;align-items:center;gap:8px">
                         <div style="flex:1;height:1px;background:var(--border)"></div>
-                        ${fD(m.createdAt)}
+                        ${fD(message.createdAt)}
                         <div style="flex:1;height:1px;background:var(--border)"></div>
                       </div>
                     ` : ''}
-                    ${msgBubble(m)}`;
+                    ${msgBubble(message)}`;
                 }).join('')}
               `}
             </div>
 
-            <!-- Zone saisie -->
-            ${inputZone()}
-
+            ${inputZone(activeConv)}
           ` : `
-            <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--txt3);font-size:13px">
-              Sélectionnez une conversation
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;color:var(--txt3);font-size:13px">
+              ${loadingOnly ? 'Chargement des conversations…' : 'Aucune conversation disponible pour le moment.'}
             </div>
+            ${inputZone(null)}
           `}
-
         </div>
       </div>
     </div>`;
 }
 
-// ─────────────────────────────────────────────────────────────
-// BADGE NON-LUS pour les tabs (exporté)
-// ─────────────────────────────────────────────────────────────
 export function chatBadge() {
   const n = totalUnread();
   if (n === 0) return '';
-  return `<span style="
-    background:var(--red);color:#fff;
-    font-size:9px;font-weight:700;
-    padding:1px 5px;border-radius:10px;
-    margin-left:4px;vertical-align:middle
-  ">${n > 9 ? '9+' : n}</span>`;
+  return `<span style="background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px;vertical-align:middle">${n > 9 ? '9+' : n}</span>`;
 }
