@@ -10,6 +10,98 @@ import { bCalendar, calBadge, calDashboardWidget } from './calendar.js';
 import { totalUnread } from '../modules/chat.js';
 import { getLowStock } from '../modules/stock.js';
 
+function runtimePanel({ kind = 'info', title, text, meta = '' }) {
+  const tones = {
+    info: {
+      bg: A.dark ? '#1C2433' : '#EFF6FF',
+      border: A.dark ? '#2E4C77' : '#BFDBFE',
+      color: A.dark ? '#BFDBFE' : '#1D4ED8',
+      icon: '⏳',
+    },
+    warn: {
+      bg: A.dark ? '#2D1B00' : '#FFF7ED',
+      border: A.dark ? '#7C4A03' : '#FED7AA',
+      color: A.dark ? '#FCD34D' : '#9A3412',
+      icon: '⚠️',
+    },
+    ok: {
+      bg: A.dark ? '#10261A' : '#ECFDF5',
+      border: A.dark ? '#1F5C3A' : '#BBF7D0',
+      color: A.dark ? '#86EFAC' : '#166534',
+      icon: '✓',
+    },
+  };
+  const tone = tones[kind] || tones.info;
+
+  return `
+    <div style="background:${tone.bg};border:1px solid ${tone.border};border-radius:8px;padding:10px 12px;margin:0 16px 12px;color:${tone.color}">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <div style="font-size:14px;line-height:1.2">${tone.icon}</div>
+        <div style="min-width:0">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:12px;letter-spacing:.2px">${title}</div>
+          <div style="font-size:12px;line-height:1.45;margin-top:2px">${text}</div>
+          ${meta ? `<div style="font-size:11px;opacity:.85;margin-top:4px">${meta}</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+function ordersRuntimeNotice() {
+  const r = A.runtime || {};
+  if (r.ordersLoading && !r.ordersHydrated) {
+    return runtimePanel({
+      kind: 'info',
+      title: 'Chargement des commandes',
+      text: 'Les commandes boutiques sont en cours de synchronisation avec la base.',
+    });
+  }
+  if (r.ordersError) {
+    return runtimePanel({
+      kind: 'warn',
+      title: 'Synchronisation commandes incomplète',
+      text: r.ordersError,
+      meta: r.lastOrdersSyncAt ? `Dernière synchro OK : ${fD(r.lastOrdersSyncAt)} · ${fT(r.lastOrdersSyncAt)}` : 'Aucune synchro confirmée pour le moment.',
+    });
+  }
+  if (r.ordersHydrated && r.lastOrdersSyncAt) {
+    return runtimePanel({
+      kind: 'ok',
+      title: 'Commandes synchronisées',
+      text: 'La vue cuisine lit les commandes Supabase.',
+      meta: `Dernière synchro : ${fD(r.lastOrdersSyncAt)} · ${fT(r.lastOrdersSyncAt)}`,
+    });
+  }
+  return '';
+}
+
+function stockRuntimeNotice() {
+  const r = A.runtime || {};
+  if (r.stockLoading && !r.stockHydrated) {
+    return runtimePanel({
+      kind: 'info',
+      title: 'Chargement du stock',
+      text: 'Le stock cuisine est en cours de synchronisation avec la base.',
+    });
+  }
+  if (r.stockError) {
+    return runtimePanel({
+      kind: 'warn',
+      title: 'Synchronisation stock incomplète',
+      text: r.stockError,
+      meta: r.lastStockSyncAt ? `Dernière synchro OK : ${fD(r.lastStockSyncAt)} · ${fT(r.lastStockSyncAt)}` : 'Aucune synchro confirmée pour le moment.',
+    });
+  }
+  if (r.stockHydrated && r.lastStockSyncAt) {
+    return runtimePanel({
+      kind: 'ok',
+      title: 'Stock synchronisé',
+      text: 'Les niveaux affichés proviennent de Supabase.',
+      meta: `Dernière synchro : ${fD(r.lastStockSyncAt)} · ${fT(r.lastStockSyncAt)}`,
+    });
+  }
+  return '';
+}
+
 function kitchenHeader() {
   const pending = A.orders.filter(o => o.status === 'pending').length;
 
@@ -38,21 +130,31 @@ function kitchenHeader() {
 
 function tabKOrders() {
   const orders = [...A.orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const notice = ordersRuntimeNotice();
+  const loadingOnly = A.runtime.ordersLoading && !A.runtime.ordersHydrated;
+
+  if (!orders.length && loadingOnly) {
+    return `<div style="padding:16px">${notice}</div>`;
+  }
 
   if (!orders.length) {
     return `
-      <div style="padding:60px 20px;text-align:center">
-        <div style="font-size:32px;margin-bottom:12px">✅</div>
-        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--txt);margin-bottom:6px">Aucune commande</div>
-        <div style="font-size:13px;color:var(--txt2)">Les commandes des boutiques apparaîtront ici.</div>
+      <div style="padding:16px">
+        ${notice}
+        <div style="padding:60px 20px;text-align:center">
+          <div style="font-size:32px;margin-bottom:12px">✅</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--txt);margin-bottom:6px">Aucune commande</div>
+          <div style="font-size:13px;color:var(--txt2)">Les commandes des boutiques apparaîtront ici.</div>
+        </div>
       </div>`;
   }
 
   return `
     <div style="padding:16px">
+      ${notice}
       ${orders.map(o => {
-        const st      = ORDER_STATUSES[o.status] || {};
-        const open    = A['oO_' + o.id];
+        const st = ORDER_STATUSES[o.status] || {};
+        const open = A['oO_' + o.id];
         const editing = !!A['eQ_' + o.id];
 
         return `
@@ -159,18 +261,21 @@ function tabKOrders() {
 function tabKStock() {
   const cats = oCats();
   const lows = getLowStock('kitchen');
+  const notice = stockRuntimeNotice();
+  const loadingOnly = A.runtime.stockLoading && !A.runtime.stockHydrated;
 
   return `
     <div style="padding:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      ${notice}
+      ${loadingOnly ? '' : `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
         ${lows.length > 0
           ? `<div class="alert-low"><span>⚠️</span><span>${lows.length} alerte${lows.length > 1 ? 's' : ''} stock</span></div>`
           : `<div style="background:var(--lgreen);border:1px solid var(--green);border-radius:var(--r2);padding:8px 12px;font-size:13px;font-weight:600;color:var(--green)">✓ Stocks OK</div>`
         }
         <button class="btn btn-ghost btn-sm" onclick="window.__BOB__.prtPDF()">📄 Bon de besoin</button>
-      </div>
+      </div>`}
 
-      ${cats.map(cat => {
+      ${loadingOnly ? '' : cats.map(cat => {
         const prods = aP().filter(p => p.cat === cat);
         return `
           <div class="cat-sep">
@@ -179,7 +284,7 @@ function tabKStock() {
             <div class="cat-line"></div>
           </div>
           ${prods.map(p => {
-            const s   = (A.stock.kitchen || {})[p.id] || { qty: 0, alert: 0 };
+            const s = (A.stock.kitchen || {})[p.id] || { qty: 0, alert: 0 };
             const low = s.qty <= s.alert;
             return `
               <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:${low ? (A.dark?'#2D1B00':'#FFF7ED') : 'var(--bg2)'}">
