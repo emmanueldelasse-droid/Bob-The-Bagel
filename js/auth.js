@@ -3,7 +3,7 @@
    Authentification Supabase · Session · Droits
    ============================================================ */
 
-import { A, sv, resetOrdersRuntime, resetStockRuntime } from './state.js';
+import { A, sv, resetOrdersRuntime, resetStockRuntime, resetChatRuntime } from './state.js';
 import { alog, toast, render, nISO } from './utils.js';
 import {
   getSupabase,
@@ -15,6 +15,11 @@ import {
   startRealtimeSync,
   stopRealtimeSync,
 } from './api/supabase.js';
+import {
+  loadChatIntoState,
+  startChatRealtimeSync,
+  stopChatRealtimeSync,
+} from './modules/chat.js';
 
 export async function dLog() {
   if (A.lLocked) return;
@@ -56,7 +61,9 @@ export async function dLog() {
 
     await loadOrdersIntoState();
     await loadStockIntoState();
+    await loadChatIntoState();
     await startRealtimeSync();
+    await startChatRealtimeSync();
 
     A.view = 'select';
     render();
@@ -91,6 +98,7 @@ export async function dLog() {
 
 export async function logout() {
   try {
+    await stopChatRealtimeSync();
     await stopRealtimeSync();
     await signOut();
   } catch (e) {
@@ -104,8 +112,11 @@ export async function logout() {
   A.note = '';
   A.search = '';
   A.orders = [];
+  A.messages = [];
+  A.conversations = [];
   resetOrdersRuntime();
   resetStockRuntime();
+  resetChatRuntime();
   render();
 }
 
@@ -130,7 +141,9 @@ export async function restoreSession() {
 
     await loadOrdersIntoState();
     await loadStockIntoState();
+    await loadChatIntoState();
     await startRealtimeSync();
+    await startChatRealtimeSync();
 
     A.view = A.view === 'login' ? 'select' : A.view;
     return true;
