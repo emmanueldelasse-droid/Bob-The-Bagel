@@ -3,58 +3,63 @@
    Stock · Alertes · Export PDF bon de besoin
    ============================================================ */
 
-import { A, sv }                        from '../state.js';
+import { A, sv } from '../state.js';
 import { gId, nISO, aP, toast, render } from '../utils.js';
+import { loadStockIntoState, updateStock as updateStockApi } from '../api/supabase.js';
 
-// ── Mise à jour stock ──────────────────────────────────────
-/**
- * Met à jour un champ (qty ou alert) d'un produit dans un stock donné.
- * @param {string} sid  - ID entité : shop ID ou 'kitchen'
- * @param {string} pid  - ID produit
- * @param {string} field - 'qty' ou 'alert'
- * @param {number|string} val
- */
-export function uSt(sid, pid, field, val) {
-  const ns = JSON.parse(JSON.stringify(A.stock));
-  if (!ns[sid])       ns[sid]       = {};
-  if (!ns[sid][pid])  ns[sid][pid]  = { qty: 0, alert: 10 };
-
-  const parsed = parseInt(val) || 0;
-  ns[sid][pid][field] = Math.max(0, parsed); // pas de stock négatif
-
-  A.stock = ns;
-  sv('st', A.stock);
-
-  A.sLog = [
-    { time: nISO(), reason: `MAJ ${field} ${pid} (${sid})`, user: A.cUser?.name },
-    ...A.sLog,
-  ].slice(0, 100);
-  sv('sl', A.sLog);
+async function refreshStock(entityIds = null) {
+  await loadStockIntoState(entityIds);
 }
 
-// ── Toggle log stock ───────────────────────────────────────
+async function persistStockField(sid, pid, field, val, opts = {}) {
+  const parsed = Math.max(0, parseInt(val) || 0);
+
+  try {
+    await updateStockApi(sid, pid, field, parsed);
+
+    const ns = JSON.parse(JSON.stringify(A.stock));
+    if (!ns[sid]) ns[sid] = {};
+    if (!ns[sid][pid]) ns[sid][pid] = { qty: 0, alert: 10 };
+    ns[sid][pid][field] = parsed;
+    A.stock = ns;
+
+    if (opts.refresh !== false) {
+      await refreshStock([sid]);
+    }
+
+    A.sLog = [
+      { time: nISO(), reason: `MAJ ${field} ${pid} (${sid})`, user: A.cUser?.name },
+      ...A.sLog,
+    ].slice(0, 100);
+    sv('sl', A.sLog);
+
+    render();
+    return parsed;
+  } catch (error) {
+    console.warn('[BOB] stock update failed:', error);
+    toast(error?.message || 'Mise à jour stock impossible', 'error');
+    render();
+    return null;
+  }
+}
+
+export async function uSt(sid, pid, field, val) {
+  await persistStockField(sid, pid, field, val);
+}
+
 export function tSL() {
   A.showSL = !A.showSL;
   render();
 }
 
-// ── Alertes ────────────────────────────────────────────────
-/**
- * Retourne les produits en dessous du seuil d'alerte pour une entité.
- * @param {string} entityId - shop ID ou 'kitchen'
- */
 export function getLowStock(entityId) {
   const entityStock = A.stock[entityId] || {};
-  return aP().filter(p => {
+  return aP().filter((p) => {
     const s = entityStock[p.id];
     return s && s.qty <= s.alert;
   });
 }
 
-/**
- * Retourne le niveau de stock d'un produit pour une entité.
- * @returns {'ok'|'low'|'empty'}
- */
 export function stockLevel(entityId, productId) {
   const s = (A.stock[entityId] || {})[productId];
   if (!s) return 'empty';
@@ -63,11 +68,10 @@ export function stockLevel(entityId, productId) {
   return 'ok';
 }
 
-// ── Réceptions fournisseur ─────────────────────────────────
 export function tARc() {
-  A.addRc  = !A.addRc;
+  A.addRc = !A.addRc;
   A.rcForm = { sup: '', cart: {} };
-  A.rcCat  = 'PAINS';
+  A.rcCat = 'PAINS';
   render();
 }
 
@@ -82,57 +86,78 @@ export function sRC(id, val) {
   render();
 }
 
-export function sbRc() {
+export async function sbRc() {
   const f = A.rcForm || {};
-  if (!f.sup?.trim()) { toast('Nom du fournisseur requis', 'error'); return; }
+  if (!f.sup?.trim()) {
+    toast('Nom du fournisseur requis', 'error');
+    return;
+  }
 
   const items = aP()
-    .filter(p => (f.cart?.[p.id] || 0) > 0)
-    .map(p => ({ id: p.id, qty: f.cart[p.id] }));
+    .filter((p) => (f.cart?.[p.id] || 0) > 0)
+    .map((p) => ({ id: p.id, qty: f.cart[p.id] }));
 
-  if (!items.length) { toast('Aucun produit sélectionné', 'error'); return; }
+  if (!items.length) {
+    toast('Aucun produit sélectionné', 'error');
+    return;
+  }
 
   const receipt = {
-    id:         gId('REC'),
-    supplier:   f.sup,
+    id: gId('REC'),
+    supplier: f.sup,
     items,
-    createdAt:  nISO(),
+    createdAt: nISO(),
     receivedBy: A.cUser?.name,
   };
 
-  const ns = JSON.parse(JSON.stringify(A.stock));
-  if (!ns.kitchen) ns.kitchen = {};
-  items.forEach(i => {
-    if (!ns.kitchen[i.id]) ns.kitchen[i.id] = { qty: 0, alert: 0 };
-    ns.kitchen[i.id].qty += i.qty;
-  });
+  try {
+    const nextStock = JSON.parse(JSON.stringify(A.stock));
+    if (!nextStock.kitchen) nextStock.kitchen = {};
 
-  A.stock    = ns;
-  A.receipts = [receipt, ...A.receipts];
-  sv('st', ns);
-  sv('rc', A.receipts);
+    for (const item of items) {
+      const current = nextStock.kitchen[item.id] || { qty: 0, alert: 0 };
+      const nextQty = current.qty + item.qty;
+      const nextAlert = current.alert || 0;
 
-  A.sLog = [{ time: nISO(), reason: `Réception: ${f.sup}`, user: A.cUser?.name }, ...A.sLog].slice(0, 100);
-  sv('sl', A.sLog);
+      nextStock.kitchen[item.id] = { qty: nextQty, alert: nextAlert };
+      await updateStockApi('kitchen', item.id, 'qty', nextQty);
+      await updateStockApi('kitchen', item.id, 'alert', nextAlert);
+    }
 
-  A.addRc = false;
-  A.rcForm = { sup: '', cart: {} };
-  toast(`Réception ${f.sup} ✓`);
-  render();
+    A.stock = nextStock;
+    A.receipts = [receipt, ...A.receipts];
+    sv('rc', A.receipts);
+
+    A.sLog = [{ time: nISO(), reason: `Réception: ${f.sup}`, user: A.cUser?.name }, ...A.sLog].slice(0, 100);
+    sv('sl', A.sLog);
+
+    A.addRc = false;
+    A.rcForm = { sup: '', cart: {} };
+
+    await refreshStock(['kitchen']);
+    toast(`Réception ${f.sup} ✓`);
+    render();
+  } catch (error) {
+    console.warn('[BOB] supplier receipt failed:', error);
+    toast(error?.message || 'Réception fournisseur impossible', 'error');
+    render();
+  }
 }
 
-// ── Export PDF bon de besoin ────────────────────────────────
 export function prtPDF() {
-  const ks  = A.stock.kitchen || {};
+  const ks = A.stock.kitchen || {};
   const all = aP();
-  const alerts = all.filter(p => { const s = ks[p.id]; return s && s.qty <= s.alert; });
+  const alerts = all.filter((p) => {
+    const s = ks[p.id];
+    return s && s.qty <= s.alert;
+  });
 
   const today = new Date().toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
 
-  const rows = all.map(p => {
-    const s   = ks[p.id] || { qty: 0, alert: 0 };
+  const rows = all.map((p) => {
+    const s = ks[p.id] || { qty: 0, alert: 0 };
     const low = s.qty <= s.alert;
     return `
       <tr style="background:${low ? '#fff5f5' : '#fff'}">
