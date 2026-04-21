@@ -182,6 +182,10 @@ export const A = {
     ordersHydrated: false,
     ordersError: '',
     lastOrdersSyncAt: null,
+    stockLoading: false,
+    stockHydrated: false,
+    stockError: '',
+    lastStockSyncAt: null,
   },
 };
 
@@ -194,6 +198,13 @@ export function resetOrdersRuntime() {
   A.runtime.ordersHydrated = false;
   A.runtime.ordersError = '';
   A.runtime.lastOrdersSyncAt = null;
+}
+
+export function resetStockRuntime() {
+  A.runtime.stockLoading = false;
+  A.runtime.stockHydrated = false;
+  A.runtime.stockError = '';
+  A.runtime.lastStockSyncAt = null;
 }
 
 export function sv(k, v) {
@@ -210,4 +221,5 @@ export function clearAll() {
   });
   A.orders = [];
   resetOrdersRuntime();
+  resetStockRuntime();
 }
