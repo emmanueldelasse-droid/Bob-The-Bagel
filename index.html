@@ -5,15 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>BOBtheBAGEL</title>
 
-<!-- Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&family=Dancing+Script:wght@700&display=swap" rel="stylesheet"/>
-
-<!-- CSS -->
 <link rel="stylesheet" href="css/base.css"/>
 <link rel="stylesheet" href="css/components.css"/>
 <link rel="stylesheet" href="css/layout.css"/>
-
-<!-- Supabase CDN -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -26,13 +21,11 @@
    Point d'entrée : expose window.__BOB__ et lance l'app
    ============================================================ */
 
-// ── Imports ────────────────────────────────────────────────
-import { A, sv, CATEGORY_ICONS }  from './js/state.js';
-import { render, toast, gId, cSec, aP, oCats, gP, fD, fT, fDl, dDel, nISO, cap, setBApp } from './js/utils.js';
+import { A, CATEGORY_ICONS, setRuntimeFlag } from './js/state.js';
+import { render, cSec, aP, oCats, gP, fD, fT, fDl, dDel, nISO, cap, setBApp } from './js/utils.js';
 import { dLog, logout, isAdmin, canAccessKitchen, restoreSession } from './js/auth.js';
 import { bApp, goSel, goShop, goKit, goAdm, switchShop, sSTb, sKTb, sSCat, sRCat, sSch, toggleDark, setLang } from './js/router.js';
 
-// Modules commandes
 import {
   sCart, qAdd, sNote, sDel, sDelT,
   oSum, cxSum, sbO, dupeO,
@@ -44,10 +37,8 @@ import {
   okCf, cxCf,
 } from './js/modules/orders.js';
 
-// Modules stock
 import { uSt, tSL, tARc, sRS, sRC, sbRc, prtPDF } from './js/modules/stock.js';
 
-// Modules calendrier
 import {
   openCalForm, closeCalForm, saveEvent, editEvent, deleteEvent,
   setCalField, toggleCalShop, setCalFilter, setCalTab, setEventStatus,
@@ -56,13 +47,11 @@ import {
   duplicateEvent, exportEventPDF,
 } from './js/modules/calendar.js';
 
-// Modules chat
 import {
   selectConv, sendMessage, setChatInput, setChatPriority,
   getOrCreateOrderConv, openOrderChat, deleteMessage,
 } from './js/modules/chat.js';
 
-// Modules admin
 import {
   sAT, sBn, svBn, clBn,
   tAU, sNU, aU, dU,
@@ -70,31 +59,22 @@ import {
   trPh, hdPh, svPr,
 } from './js/modules/admin.js';
 
-// ── Init Supabase (test de connexion) ──────────────────────
 import { getSupabase } from './js/api/supabase.js';
-const sb = getSupabase();
-if (sb) {
-  console.log('[BOB] ✅ Supabase client chargé');
-} else {
-  console.warn('[BOB] ⚠️ Supabase client non disponible (vérifier la clé et la CDN)');
-}
 
-// ── Exposition globale window.__BOB__ ──────────────────────
-// Nécessaire pour que les handlers HTML inline (onclick="...") fonctionnent
-// avec des modules ES6.
+const sb = getSupabase();
+if (sb) console.log('[BOB] ✅ Supabase client chargé');
+else console.warn('[BOB] ⚠️ Supabase client non disponible (vérifier la clé et la CDN)');
+
 window.__BOB__ = {
-  // State & constants (pour cSec dans utils)
+  A,
   CATEGORY_ICONS,
 
-  // Auth
   dLog, logout,
 
-  // Navigation
   goSel, goShop, goKit, goAdm, switchShop,
   sSTb, sKTb, sSCat, sRCat, sSch,
   toggleDark, setLang,
 
-  // Commandes
   sCart, qAdd, sNote, sDel, sDelT,
   oSum, cxSum, sbO, dupeO,
   sOS, sOC, saveComment,
@@ -104,35 +84,30 @@ window.__BOB__ = {
   tO, tKS, tRc,
   okCf, cxCf,
 
-  // Stock
   uSt, tSL, tARc, sRS, sRC, sbRc, prtPDF,
 
-  // Calendrier
   openCalForm, closeCalForm, saveEvent, editEvent, deleteEvent,
   setCalField, toggleCalShop, setCalFilter, setCalTab, setEventStatus,
   setCalColorMode, calNavPrev, calNavNext, calNavToday,
   addCheckItem, toggleCheckItem, removeCheckItem,
   duplicateEvent, exportEventPDF,
-  _toggleEv: (id) => { A['oEv_' + id] = !A['oEv_' + id]; import('./js/utils.js').then(({render})=>render()); },
+  _toggleEv: (id) => { A['oEv_' + id] = !A['oEv_' + id]; import('./js/utils.js').then(({ render }) => render()); },
 
-  // Chat
   selectConv, sendMessage, setChatInput, setChatPriority,
   getOrCreateOrderConv, openOrderChat, deleteMessage,
 
-  // Admin
   sAT, sBn, svBn, clBn,
   tAU, sNU, aU, dU,
   tAP, sNP, aP2, tP,
   trPh, hdPh, svPr,
 };
 
-// ── Init ───────────────────────────────────────────────────
+setBApp(() => bApp());
 if (!A.del) A.del = dDel();
 
-// Restaure la session Supabase si elle existe (rafraîchissement de page),
-// puis affiche l'app.
 (async () => {
   await restoreSession();
+  setRuntimeFlag('booting', false);
   render();
 })();
 </script>
