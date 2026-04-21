@@ -3,38 +3,63 @@
    Logique commandes : création, statuts, validation, réception
    ============================================================ */
 
-import { A, sv }                           from '../state.js';
+import { A, sv } from '../state.js';
 import { gId, nISO, dDel, toast, alog, render, isValidDelivery } from '../utils.js';
+import { createOrder as createOrderApi, loadOrdersIntoState, patchOrder } from '../api/supabase.js';
 
-// ── Panier boutique ────────────────────────────────────────
+function currentTimestamp() {
+  return nISO();
+}
+
+async function refreshOrders() {
+  await loadOrdersIntoState();
+}
+
+async function persistOrderPatch(id, patch, successMessage = '') {
+  try {
+    await patchOrder(id, {
+      ...patch,
+      updatedAt: currentTimestamp(),
+      modifiedBy: patch.modifiedBy ?? A.cUser?.name ?? null,
+    });
+    await refreshOrders();
+    if (successMessage) toast(successMessage);
+    render();
+    return true;
+  } catch (error) {
+    console.warn('[BOB] order patch failed:', error);
+    toast(error?.message || 'Mise à jour impossible', 'error');
+    render();
+    return false;
+  }
+}
+
 export function sCart(id, val) {
   A.cart[id] = Math.max(0, parseInt(val) || 0);
   render();
 }
 
 export function qAdd(id) {
-  const p = A.products.find(p => p.id === id);
+  const p = A.products.find((prod) => prod.id === id);
   if (!p) return;
   A.cart[id] = (A.cart[id] || 0) + p.step;
   render();
 }
 
-export function sNote(v)  { A.note = v; }
-export function sDel(v)   { A.del  = v; }
-export function sDelT(v)  { A.delT = v; }
+export function sNote(v) { A.note = v; }
+export function sDel(v)  { A.del = v; }
+export function sDelT(v) { A.delT = v; }
 
-// ── Résumé avant envoi ─────────────────────────────────────
 export function oSum() {
   const items = A.products
-    .filter(p => p.active && (A.cart[p.id] || 0) > 0)
-    .map(p => ({ id: p.id, qty: A.cart[p.id] }));
+    .filter((p) => p.active && (A.cart[p.id] || 0) > 0)
+    .map((p) => ({ id: p.id, qty: A.cart[p.id] }));
 
   if (!items.length) {
     toast('Panier vide', 'warn');
     return;
   }
 
-  // Validation date
   const deliveryDate = A.del || dDel();
   if (!isValidDelivery(deliveryDate)) {
     toast('Date de livraison invalide', 'error');
@@ -50,107 +75,96 @@ export function cxSum() {
   render();
 }
 
-// ── Envoi commande ─────────────────────────────────────────
-export function sbO() {
+export async function sbO() {
   const s = A.summary;
   if (!s) return;
 
   const sh = A.selShop;
+  const now = currentTimestamp();
   const order = {
-    id:           gId('CMD'),
-    shopId:       sh.id,
-    shopName:     sh.name,
-    shopColor:    sh.color,
-    items:        s.items,
-    note:         s.note,
-    status:       'pending',
-    createdAt:    nISO(),
-    updatedAt:    nISO(),
-    delivery:     s.del,
+    id: gId('CMD'),
+    shopId: sh.id,
+    shopName: sh.name,
+    shopColor: sh.color,
+    items: s.items,
+    note: s.note,
+    status: 'pending',
+    createdAt: now,
+    updatedAt: now,
+    delivery: s.del,
     deliveryTime: s.delT,
-    orderedBy:    A.cUser.name,
-    validatedBy:  null,
-    comment:      null,
+    orderedBy: A.cUser?.name || '',
+    validatedBy: null,
+    comment: null,
   };
 
-  A.orders = [order, ...A.orders];
-  sv('or', A.orders);
+  try {
+    await createOrderApi(order);
+    await refreshOrders();
 
-  A.cart    = {};
-  A.note    = '';
-  A.summary = null;
+    A.cart = {};
+    A.note = '';
+    A.summary = null;
+    A.sTab = 'orders';
 
-  alog(`Commande: ${order.id}`);
-  toast('Commande envoyée ✓');
-  A.sTab = 'orders'; // bascule sur l'onglet historique
-  render();
+    alog(`Commande: ${order.id}`);
+    toast('Commande envoyée ✓');
+    render();
+  } catch (error) {
+    console.warn('[BOB] createOrder failed:', error);
+    toast(error?.message || 'Envoi de la commande impossible', 'error');
+    render();
+  }
 }
 
-// ── Duplication commande ───────────────────────────────────
 export function dupeO(id) {
-  const o = A.orders.find(o => o.id === id);
+  const o = A.orders.find((order) => order.id === id);
   if (!o) return;
-  A.cart  = (o.items || []).reduce((acc, i) => ({ ...acc, [i.id]: i.qty }), {});
-  A.sTab  = 'order';
+  A.cart = (o.items || []).reduce((acc, item) => ({ ...acc, [item.id]: item.qty }), {});
+  A.sTab = 'order';
   toast('Commande dupliquée ✓');
   render();
 }
 
-// ── Statuts (cuisine) ──────────────────────────────────────
-export function sOS(id, status) {
-  A.orders = A.orders.map(o =>
-    o.id === id ? { ...o, status, updatedAt: nISO(), modifiedBy: A.cUser?.name } : o
-  );
-  sv('or', A.orders);
-  alog(`Statut ${id}: ${status}`);
-
+export async function sOS(id, status) {
   const labels = { preparing: 'En préparation 🔧', delivering: 'En livraison 🚚' };
-  toast(labels[status] || 'Statut mis à jour ✓');
-  render();
+  const ok = await persistOrderPatch(id, { status }, labels[status] || 'Statut mis à jour ✓');
+  if (ok) alog(`Statut ${id}: ${status}`);
 }
 
-// ── Commentaire commande ───────────────────────────────────
 export function sOC(id, v) {
-  A.orders = A.orders.map(o => o.id === id ? { ...o, comment: v } : o);
-  // Pas de sv() ni render() ici : saisie live, save au moment de la validation
+  A.orders = A.orders.map((o) => (o.id === id ? { ...o, comment: v } : o));
 }
 
-export function saveComment(id) {
-  sv('or', A.orders);
+export async function saveComment(id) {
+  const order = A.orders.find((o) => o.id === id);
+  if (!order) return;
+  await persistOrderPatch(id, { comment: order.comment || '' });
 }
 
-// ── Mise à jour date de livraison ──────────────────────────
-export function uOD(id, v) {
-  if (!isValidDelivery(v)) { toast('Date invalide', 'error'); return; }
-  A.orders = A.orders.map(o =>
-    o.id === id ? { ...o, delivery: v, updatedAt: nISO(), modifiedBy: A.cUser?.name } : o
-  );
-  sv('or', A.orders);
-  toast('Date mise à jour ✓');
+export async function uOD(id, v) {
+  if (!isValidDelivery(v)) {
+    toast('Date invalide', 'error');
+    return;
+  }
+  await persistOrderPatch(id, { delivery: v }, 'Date mise à jour ✓');
 }
 
-export function uOT(id, v) {
-  A.orders = A.orders.map(o =>
-    o.id === id ? { ...o, deliveryTime: v, modifiedBy: A.cUser?.name } : o
-  );
-  sv('or', A.orders);
+export async function uOT(id, v) {
+  await persistOrderPatch(id, { deliveryTime: v });
 }
 
-// ── Validation / Refus (cuisine) ───────────────────────────
 export function cfV(id) {
   A.confirm = {
     msg: 'Valider cette commande ?',
-    fn: () => {
-      const comment = A.orders.find(o => o.id === id)?.comment || '';
-      A.orders = A.orders.map(o =>
-        o.id === id
-          ? { ...o, status: 'validated', updatedAt: nISO(), validatedBy: A.cUser?.name, comment }
-          : o
-      );
-      sv('or', A.orders);
-      alog(`Validé: ${id}`);
-      toast('Validée ✓');
-      render();
+    fn: async () => {
+      const comment = A.orders.find((o) => o.id === id)?.comment || '';
+      const ok = await persistOrderPatch(id, {
+        status: 'validated',
+        validatedBy: A.cUser?.name || null,
+        comment,
+      }, 'Validée ✓');
+      if (ok) alog(`Validé: ${id}`);
     },
   };
   render();
@@ -159,26 +173,21 @@ export function cfV(id) {
 export function cfR(id) {
   A.confirm = {
     msg: 'Refuser cette commande ?',
-    fn: () => {
-      const comment = A.orders.find(o => o.id === id)?.comment || '';
-      A.orders = A.orders.map(o =>
-        o.id === id
-          ? { ...o, status: 'rejected', updatedAt: nISO(), validatedBy: A.cUser?.name, comment }
-          : o
-      );
-      sv('or', A.orders);
-      alog(`Refusé: ${id}`);
-      toast('Refusée ✗', 'error');
-      render();
+    fn: async () => {
+      const comment = A.orders.find((o) => o.id === id)?.comment || '';
+      const ok = await persistOrderPatch(id, {
+        status: 'rejected',
+        validatedBy: A.cUser?.name || null,
+        comment,
+      }, 'Refusée ✗');
+      if (ok) alog(`Refusé: ${id}`);
     },
   };
   render();
 }
 
-// ── Réception commande (boutique confirme) ─────────────────
 export function cfSRc(id) {
-  // Garde contre double-clic
-  const order = A.orders.find(o => o.id === id);
+  const order = A.orders.find((o) => o.id === id);
   if (!order || order.status === 'received') {
     toast('Déjà réceptionnée', 'warn');
     return;
@@ -186,35 +195,43 @@ export function cfSRc(id) {
 
   A.confirm = {
     msg: 'Confirmer la réception de cette commande ?',
-    fn: () => {
-      const ns = JSON.parse(JSON.stringify(A.stock));
-      if (!ns[order.shopId]) ns[order.shopId] = {};
+    fn: async () => {
+      try {
+        await patchOrder(id, {
+          status: 'received',
+          updatedAt: currentTimestamp(),
+          modifiedBy: A.cUser?.name || null,
+        });
 
-      (order.items || []).forEach(i => {
-        if (!ns[order.shopId][i.id]) ns[order.shopId][i.id] = { qty: 0, alert: 10 };
-        ns[order.shopId][i.id].qty += i.qty;
-      });
+        const ns = JSON.parse(JSON.stringify(A.stock));
+        if (!ns[order.shopId]) ns[order.shopId] = {};
 
-      A.orders = A.orders.map(o =>
-        o.id === id ? { ...o, status: 'received', updatedAt: nISO() } : o
-      );
-      A.stock = ns;
-      sv('or', A.orders);
-      sv('st', A.stock);
+        (order.items || []).forEach((i) => {
+          if (!ns[order.shopId][i.id]) ns[order.shopId][i.id] = { qty: 0, alert: 10 };
+          ns[order.shopId][i.id].qty += i.qty;
+        });
 
-      A.sLog = [{ time: nISO(), reason: `Réception ${id}`, user: A.cUser?.name }, ...A.sLog].slice(0, 100);
-      sv('sl', A.sLog);
+        A.stock = ns;
+        sv('st', A.stock);
 
-      toast('Réception confirmée 📦');
-      render();
+        A.sLog = [{ time: currentTimestamp(), reason: `Réception ${id}`, user: A.cUser?.name }, ...A.sLog].slice(0, 100);
+        sv('sl', A.sLog);
+
+        await refreshOrders();
+        toast('Réception confirmée 📦');
+        render();
+      } catch (error) {
+        console.warn('[BOB] receive order failed:', error);
+        toast(error?.message || 'Réception impossible', 'error');
+        render();
+      }
     },
   };
   render();
 }
 
-// ── Réception envoi cuisine vers boutique ──────────────────
 export function cfKRc(id) {
-  const ksend = A.ksends.find(k => k.id === id);
+  const ksend = A.ksends.find((k) => k.id === id);
   if (!ksend || ksend.status === 'received') {
     toast('Déjà réceptionnée', 'warn');
     return;
@@ -227,13 +244,13 @@ export function cfKRc(id) {
       const ns = JSON.parse(JSON.stringify(A.stock));
       if (!ns[sid]) ns[sid] = {};
 
-      (ksend.items || []).forEach(i => {
+      (ksend.items || []).forEach((i) => {
         if (!ns[sid][i.id]) ns[sid][i.id] = { qty: 0, alert: 10 };
         ns[sid][i.id].qty += i.qty;
       });
 
-      A.ksends = A.ksends.map(x => x.id === id ? { ...x, status: 'received' } : x);
-      A.stock  = ns;
+      A.ksends = A.ksends.map((x) => (x.id === id ? { ...x, status: 'received' } : x));
+      A.stock = ns;
       sv('ks', A.ksends);
       sv('st', A.stock);
       toast('Réception confirmée 📦');
@@ -243,10 +260,9 @@ export function cfKRc(id) {
   render();
 }
 
-// ── Ajustement quantités (cuisine) ────────────────────────
 export function stEQ(id) {
-  A['eQ_' + id] = (A.orders.find(o => o.id === id)?.items || [])
-    .reduce((acc, i) => ({ ...acc, [i.id]: i.qty }), {});
+  A['eQ_' + id] = (A.orders.find((o) => o.id === id)?.items || [])
+    .reduce((acc, item) => ({ ...acc, [item.id]: item.qty }), {});
   render();
 }
 
@@ -255,17 +271,14 @@ export function sEQ(id, iid, v) {
   A['eQ_' + id][iid] = Math.max(0, parseInt(v) || 0);
 }
 
-export function svEQ(id) {
+export async function svEQ(id) {
   const eq = A['eQ_' + id];
-  if (!eq) return;
-  A.orders = A.orders.map(o =>
-    o.id === id
-      ? { ...o, items: (o.items || []).map(i => ({ ...i, qty: eq[i.id] ?? i.qty })), updatedAt: nISO(), modifiedBy: A.cUser?.name }
-      : o
-  );
-  delete A['eQ_' + id];
-  sv('or', A.orders);
-  toast('Quantités mises à jour ✓');
+  const order = A.orders.find((o) => o.id === id);
+  if (!eq || !order) return;
+
+  const items = (order.items || []).map((item) => ({ ...item, qty: eq[item.id] ?? item.qty }));
+  const ok = await persistOrderPatch(id, { items }, 'Quantités mises à jour ✓');
+  if (ok) delete A['eQ_' + id];
   render();
 }
 
@@ -274,14 +287,12 @@ export function cxEQ(id) {
   render();
 }
 
-// ── Toggle affichage détail commande ───────────────────────
-export function tO(id)  { A['oO_' + id]  = !A['oO_' + id];  render(); }
+export function tO(id)  { A['oO_' + id]  = !A['oO_' + id]; render(); }
 export function tKS(id) { A['oKS_' + id] = !A['oKS_' + id]; render(); }
 export function tRc(id) { A['oRc_' + id] = !A['oRc_' + id]; render(); }
 
-// ── Confirmation générique ─────────────────────────────────
-export function okCf() {
-  if (A.confirm?.fn) A.confirm.fn();
+export async function okCf() {
+  if (A.confirm?.fn) await A.confirm.fn();
   A.confirm = null;
   render();
 }
