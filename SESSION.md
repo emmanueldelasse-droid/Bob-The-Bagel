@@ -39,7 +39,6 @@
 - Realtime : orders, messages
 
 ### Ce qui reste faux / incomplet
-- `README.md` faux / hors sujet
 - Commandes encore locales
 - Stock encore local
 - Chat encore local
@@ -87,7 +86,7 @@
 - `js/views/chat.js`
 
 ## 7) PROCHAINE ACTION UNIQUE
-**NEXT_ACTION** : corriger `README.md`, puis lancer la sortie du cœur métier hors de `localStorage` en commençant par `state.js` + boot + commandes.
+**NEXT_ACTION** : lancer la sortie du cœur métier hors de `localStorage` en commençant par `state.js` + boot + commandes.
 
 ## 8) BLOCAGES / RISQUES
 - App hybride = comportement non fiable en multi-utilisateur réel
@@ -101,7 +100,7 @@
 
 | ID | Sujet | Statut | Priorité | Résultat attendu |
 |----|-------|--------|----------|------------------|
-| A1 | Corriger `README.md` | TODO | P0 | Repo cohérent avec le vrai projet |
+| A1 | Corriger `README.md` | DONE | P0 | Repo cohérent avec le vrai projet |
 | A2 | Garder `SESSION.md` compact et à jour | DOING | P0 | Reprise rapide inter-IA |
 | B1 | Geler la base actuelle HTML/JS comme base officielle | TODO | P0 | Pas de réécriture prématurée |
 | C1 | Faire de Supabase la source de vérité unique | TODO | P0 | Fin du mix Supabase/localStorage |
@@ -123,13 +122,14 @@
 - Pas de réécriture React immédiate
 - Supabase = cible unique pour la donnée métier
 - Le planning ci-dessus est le backlog officiel à maintenir
+- Le `README.md` doit rester aligné avec la réalité du projet
 
 ## 11) DERNIÈRE SESSION
 - Date : 2026-04-21
 - IA : ChatGPT (GPT-5.4 Thinking)
-- Fait : audit réel du repo + réécriture du référentiel + création du backlog vivant
+- Fait : audit réel du repo + réécriture du référentiel + création du backlog vivant + correction du `README.md`
 - Fichiers inspectés : `SESSION.md`, `README.md`, `index.html`, `css/base.css`, `js/state.js`, `js/utils.js`, `js/router.js`, `js/auth.js`, `js/api/supabase.js`, modules et vues principales
-- Fichier modifié : `SESSION.md`
+- Fichiers modifiés : `SESSION.md`, `README.md`
 
 ## 12) FORMAT OBLIGATOIRE POUR TOUTE IA
 ### Au démarrage
