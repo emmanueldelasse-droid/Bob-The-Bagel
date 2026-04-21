@@ -3,9 +3,9 @@
    Authentification Supabase · Session · Droits
    ============================================================ */
 
-import { A, sv, resetOrdersRuntime } from './state.js';
+import { A, sv, resetOrdersRuntime, resetStockRuntime } from './state.js';
 import { alog, toast, render, nISO } from './utils.js';
-import { getSupabase, signIn, signOut, getCurrentProfile, loadOrdersIntoState } from './api/supabase.js';
+import { getSupabase, signIn, signOut, getCurrentProfile, loadOrdersIntoState, loadStockIntoState } from './api/supabase.js';
 
 export async function dLog() {
   if (A.lLocked) return;
@@ -46,6 +46,7 @@ export async function dLog() {
     alog(`Connexion: ${profile.name}`);
 
     await loadOrdersIntoState();
+    await loadStockIntoState();
 
     A.view = 'select';
     render();
@@ -93,6 +94,7 @@ export async function logout() {
   A.search = '';
   A.orders = [];
   resetOrdersRuntime();
+  resetStockRuntime();
   render();
 }
 
@@ -116,6 +118,7 @@ export async function restoreSession() {
     };
 
     await loadOrdersIntoState();
+    await loadStockIntoState();
 
     A.view = A.view === 'login' ? 'select' : A.view;
     return true;
