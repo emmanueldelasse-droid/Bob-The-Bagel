@@ -3,8 +3,6 @@
    État global · Constantes · Données initiales
    ============================================================ */
 
-// ── Constantes métier ──────────────────────────────────────
-
 export const SHOPS = [
   { id: 'carl-berner', name: 'CARL BERNER', color: '#E8B84B' },
   { id: 'bjorvika',    name: 'BJØRVIKA',    color: '#E87B4B' },
@@ -46,23 +44,12 @@ export const INIT_USERS = [
   { id: 'u3', name: 'Kitchen', role: 'kitchen', photo: null },
 ];
 
-// NOTE SÉCURITÉ : les mots de passe ne seront plus stockés en clair.
-// En production, utiliser Supabase Auth. Pour le prototype local :
-// les credentials sont définis dans auth.js uniquement.
-export const INIT_CREDENTIALS = [
-  { id: 'u1', password: 'Admin' },
-  { id: 'u2', password: 'User'  },
-  { id: 'u3', password: 'Kitchen' },
-];
-
 export const INIT_PRODUCTS = [
-  // PAINS
   { id: 'p-plain',       cat: 'PAINS',               sub: null,           name: 'PLAIN',                    unit: 'pcs', step: 1   },
   { id: 'p-sesame',      cat: 'PAINS',               sub: null,           name: 'SÉSAME',                   unit: 'pcs', step: 1   },
   { id: 'p-pavot',       cat: 'PAINS',               sub: null,           name: 'PAVOT',                    unit: 'pcs', step: 1   },
   { id: 'p-everything',  cat: 'PAINS',               sub: null,           name: 'EVERYTHING',               unit: 'pcs', step: 1   },
   { id: 'p-oignon',      cat: 'PAINS',               sub: null,           name: 'OIGNON',                   unit: 'pcs', step: 1   },
-  // VIANDES
   { id: 'vp-ham',        cat: 'VIANDES & POISSONS',  sub: 'VIANDES',      name: 'HAM',                      unit: 'g',   step: 100 },
   { id: 'vp-sh',         cat: 'VIANDES & POISSONS',  sub: 'VIANDES',      name: 'SMOKED HAM',               unit: 'g',   step: 100 },
   { id: 'vp-cc',         cat: 'VIANDES & POISSONS',  sub: 'VIANDES',      name: 'CAJUN CHICKEN',            unit: 'g',   step: 100 },
@@ -71,7 +58,6 @@ export const INIT_PRODUCTS = [
   { id: 'vp-ba',         cat: 'VIANDES & POISSONS',  sub: 'VIANDES',      name: 'BACON',                    unit: 'g',   step: 100 },
   { id: 'vp-co',         cat: 'VIANDES & POISSONS',  sub: 'VIANDES',      name: 'COPPA',                    unit: 'g',   step: 100 },
   { id: 'vp-sa',         cat: 'VIANDES & POISSONS',  sub: 'POISSONS',     name: 'SMOKED SALMON',            unit: 'g',   step: 100 },
-  // CRUDITÉS
   { id: 'cr-tom',        cat: 'CRUDITÉS',            sub: null,           name: 'TOMATO',                   unit: 'g',   step: 1   },
   { id: 'cr-spi',        cat: 'CRUDITÉS',            sub: null,           name: 'SPINACH',                  unit: 'g',   step: 1   },
   { id: 'cr-ruc',        cat: 'CRUDITÉS',            sub: null,           name: 'RUCCOLA',                  unit: 'g',   step: 1   },
@@ -81,7 +67,6 @@ export const INIT_PRODUCTS = [
   { id: 'cr-cap',        cat: 'CRUDITÉS',            sub: null,           name: 'CAPERS',                   unit: 'g',   step: 1   },
   { id: 'cr-lem',        cat: 'CRUDITÉS',            sub: null,           name: 'LEMON JUICE',              unit: 'g',   step: 1   },
   { id: 'cr-oeu',        cat: 'CRUDITÉS',            sub: null,           name: 'ŒUFS',                     unit: 'pcs', step: 1   },
-  // FROMAGES
   { id: 'fc-j',          cat: 'FROMAGES & CREAM CHEESE', sub: 'CREAM CHEESE', name: 'JALAPEÑO CREAM CHEESE',    unit: 'bac', step: 1   },
   { id: 'fc-h',          cat: 'FROMAGES & CREAM CHEESE', sub: 'CREAM CHEESE', name: 'HERBS & GARLIC CREAM CHEESE', unit: 'bac', step: 1 },
   { id: 'fc-n',          cat: 'FROMAGES & CREAM CHEESE', sub: 'CREAM CHEESE', name: 'NATURE',                   unit: 'bac', step: 1   },
@@ -91,138 +76,138 @@ export const INIT_PRODUCTS = [
   { id: 'fc-ch',         cat: 'FROMAGES & CREAM CHEESE', sub: 'FROMAGES',     name: 'CHEDDAR',                  unit: 'g',   step: 100 },
   { id: 'fc-pa',         cat: 'FROMAGES & CREAM CHEESE', sub: 'FROMAGES',     name: 'PARMIGIANO',               unit: 'g',   step: 100 },
   { id: 'fc-mo',         cat: 'FROMAGES & CREAM CHEESE', sub: 'FROMAGES',     name: 'MOZZARELLA DI BUFFALA',    unit: 'g',   step: 100 },
-  // SAUCES
   { id: 's-ma',          cat: 'SAUCES',              sub: null,           name: 'MAYONNAISE',               unit: 'pcs', step: 1   },
   { id: 's-vm',          cat: 'SAUCES',              sub: null,           name: 'VEGAN MAYONNAISE',         unit: 'pcs', step: 1   },
   { id: 's-mu',          cat: 'SAUCES',              sub: null,           name: 'SWEET MUSTARD',            unit: 'pcs', step: 1   },
   { id: 's-pe',          cat: 'SAUCES',              sub: null,           name: 'PESTO',                    unit: 'pcs', step: 1   },
   { id: 's-ba',          cat: 'SAUCES',              sub: null,           name: 'BALSAMIC GLAZE',           unit: 'pcs', step: 1   },
   { id: 's-bu',          cat: 'SAUCES',              sub: null,           name: 'BUTTER',                   unit: 'pcs', step: 1   },
-  // DESSERTS
   { id: 'd-co',          cat: 'DESSERTS',            sub: null,           name: 'COOKIE',                   unit: 'pcs', step: 1   },
-  // BOISSONS
   { id: 'b-aj',          cat: 'BOISSONS',            sub: null,           name: 'APPLE JUICE BY HOVELSRUD', unit: 'pcs', step: 1   },
   { id: 'b-ca',          cat: 'BOISSONS',            sub: null,           name: 'CAFÉ',                     unit: 'pcs', step: 1   },
   { id: 'b-li',          cat: 'BOISSONS',            sub: null,           name: 'LIMONADE',                 unit: 'pcs', step: 1   },
 ];
 
-// ── État global ────────────────────────────────────────────
-// NOTE : en production, remplacer localStorage par Supabase.
-// Les fonctions ld/sv sont conservées pour le prototype.
-
 function ld(k, fb) {
-  try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; }
-  catch { return fb; }
+  try {
+    const v = localStorage.getItem(k);
+    return v ? JSON.parse(v) : fb;
+  } catch {
+    return fb;
+  }
 }
 
 function initStock() {
   const s = { kitchen: {} };
-  INIT_PRODUCTS.forEach(p => {
-    s.kitchen[p.id] = {
-      qty:   p.unit === 'g' ? 5000 : 100,
-      alert: p.unit === 'g' ? 1000 : 20,
-    };
+  INIT_PRODUCTS.forEach((p) => {
+    s.kitchen[p.id] = { qty: p.unit === 'g' ? 5000 : 100, alert: p.unit === 'g' ? 1000 : 20 };
   });
-  SHOPS.forEach(sh => {
+  SHOPS.forEach((sh) => {
     s[sh.id] = {};
-    INIT_PRODUCTS.forEach(p => {
-      s[sh.id][p.id] = {
-        qty:   p.unit === 'g' ? 2000 : 50,
-        alert: p.unit === 'g' ? 400  : 10,
-      };
+    INIT_PRODUCTS.forEach((p) => {
+      s[sh.id][p.id] = { qty: p.unit === 'g' ? 2000 : 50, alert: p.unit === 'g' ? 400 : 10 };
     });
   });
   return s;
 }
 
 export const A = {
-  // Navigation
   view: 'login',
-
-  // Préférences
   dark: ld('dk', false),
   lang: ld('lg', 'fr'),
 
-  // Données
   users:    ld('us', INIT_USERS),
-  orders:   ld('or', []),
+  orders:   [],
   ksends:   ld('ks', []),
-  products: ld('pr', INIT_PRODUCTS.map(p => ({ ...p, active: true, price: 0 }))),
+  products: ld('pr', INIT_PRODUCTS.map((p) => ({ ...p, active: true, price: 0 }))),
   stock:    ld('st', initStock()),
   receipts: ld('rc', []),
-  events:   ld('ev', []),            // événements calendrier
-  messages: ld('msg', []),          // tous les messages
-  conversations: ld('conv', [      // conversations prédéfinies
+  events:   ld('ev', []),
+  messages: ld('msg', []),
+  conversations: ld('conv', [
     { id: 'general', type: 'general', label: 'Général', icon: '📢' },
   ]),
 
-  // Logs
   sLog: ld('sl', []),
   aLog: ld('al', []),
   cLog: ld('cl', []),
 
-  // UI
-  banner:   ld('bn', ''),
-  seen:     ld('sn', {}),
+  banner: ld('bn', ''),
+  seen:   ld('sn', {}),
 
-  // Session
   cUser:   null,
   selShop: null,
 
-  // Tabs
   sTab:  'order',
   kTab:  'orders',
   sCat:  'PAINS',
   rcCat: 'PAINS',
 
-  // Calendrier
   calTab:       'list',
   calFilter:    'all',
   calForm:      null,
   calMonth:     new Date().getMonth(),
   calYear:      new Date().getFullYear(),
-  calColorMode: 'status',   // 'status' | 'shop'
+  calColorMode: 'status',
 
-  // Chat
-  chatConvId: 'general',  // conversation active
+  chatConvId: 'general',
   chatInput:  '',
+  chatPriority: 'normal',
 
-  // Panier boutique
-  cart:  {},
-  note:  '',
-  del:   '',
-  delT:  '',
+  cart: {},
+  note: '',
+  del:  '',
+  delT: '',
 
-  // UI states
-  search:   '',
-  confirm:  null,
-  summary:  null,
-  toasts:   [],
+  search:  '',
+  confirm: null,
+  summary: null,
+  toasts:  [],
 
-  // Login
   lAttempts: 0,
   lLocked:   false,
 
-  // Formulaires
-  addU:    false,
-  addP:    false,
-  addRc:   false,
-  showSL:  false,
-  admTab:  'banner',
-  nU:      { name: '', password: '', role: 'user' },
-  nP:      { name: '', cat: 'PAINS', unit: 'pcs', step: 1, price: 0 },
-  rcForm:  { sup: '', cart: {} },
+  addU:   false,
+  addP:   false,
+  addRc:  false,
+  showSL: false,
+  admTab: 'banner',
+  nU:     { name: '', password: '', role: 'user' },
+  nP:     { name: '', cat: 'PAINS', unit: 'pcs', step: 1, price: 0 },
+  rcForm: { sup: '', cart: {} },
+
+  runtime: {
+    booting: true,
+    ordersLoading: false,
+    ordersHydrated: false,
+    ordersError: '',
+    lastOrdersSyncAt: null,
+  },
 };
 
-// ── Persistance ────────────────────────────────────────────
-// NOTE SÉCURITÉ : en production, ne jamais persister les mots de passe côté client.
+export function setRuntimeFlag(key, value) {
+  A.runtime[key] = value;
+}
+
+export function resetOrdersRuntime() {
+  A.runtime.ordersLoading = false;
+  A.runtime.ordersHydrated = false;
+  A.runtime.ordersError = '';
+  A.runtime.lastOrdersSyncAt = null;
+}
+
 export function sv(k, v) {
-  try { localStorage.setItem(k, JSON.stringify(v)); }
-  catch (e) { console.warn('[BOB] localStorage write failed:', k, e); }
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+  } catch (e) {
+    console.warn('[BOB] localStorage write failed:', k, e);
+  }
 }
 
 export function clearAll() {
-  ['dk','lg','us','or','ks','pr','st','rc','sl','al','cl','bn','sn','msg','conv','ev'].forEach(k => {
+  ['dk','lg','us','or','ks','pr','st','rc','sl','al','cl','bn','sn','msg','conv','ev'].forEach((k) => {
     localStorage.removeItem(k);
   });
+  A.orders = [];
+  resetOrdersRuntime();
 }
