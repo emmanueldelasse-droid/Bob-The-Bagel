@@ -6,9 +6,13 @@
 import { A, SHOPS, setRuntimeFlag } from '../state.js';
 
 const SUPABASE_URL      = 'https://wznalartaqvcehpohfsr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bmFsYXJ0YXF2Y2VocG9oZnNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MzAzMzgsImV4cCI6MjA5MjAwNjMzOH0.MqomT4WEX5dMXpgEisG8S_0h165fmbsI70sfEtG8cl0';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFsYXJ0YXF2Y2VocG9oZnNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MzAzMzgsImV4cCI6MjA5MjAwNjMzOH0.MqomT4WEX5dMXpgEisG8S_0h165fmbsI70sfEtG8cl0';
 
 let _client = null;
+let _ordersChannel = null;
+let _stockChannel = null;
+let _refreshOrdersTimer = null;
+let _refreshStockTimer = null;
 
 export function getSupabase() {
   if (!_client && typeof window !== 'undefined' && typeof window.supabase !== 'undefined') {
@@ -47,6 +51,14 @@ function parseItems(items) {
 function fallbackShop(shopId) {
   return SHOPS.find((shop) => shop.id === shopId) || null;
 }
+
+function debounce(fn, wait, timerKey) {
+  clearTimeout(timerKey.current);
+  timerKey.current = setTimeout(fn, wait);
+}
+
+const ordersDebounceRef = { current: null };
+const stockDebounceRef = { current: null };
 
 export function normalizeOrderRow(row) {
   if (!row) return null;
@@ -106,6 +118,20 @@ async function tryQueries(builders) {
     lastError = error;
   }
   throw lastError || new Error('Requête Supabase impossible');
+}
+
+async function removeChannelSafe(channel) {
+  const sb = getSupabase();
+  if (!sb || !channel) return;
+  try {
+    await sb.removeChannel(channel);
+  } catch {
+    try {
+      await channel.unsubscribe();
+    } catch {
+      // ignore
+    }
+  }
 }
 
 // ── Auth ───────────────────────────────────────────────────
@@ -393,6 +419,44 @@ export async function loadStockIntoState(entityIds = null) {
   } finally {
     setRuntimeFlag('stockLoading', false);
   }
+}
+
+export function subscribeStock(callback) {
+  const sb = getSupabase();
+  return sb
+    .channel('stock-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, callback)
+    .subscribe();
+}
+
+export async function stopRealtimeSync() {
+  clearTimeout(ordersDebounceRef.current);
+  clearTimeout(stockDebounceRef.current);
+  ordersDebounceRef.current = null;
+  stockDebounceRef.current = null;
+  await removeChannelSafe(_ordersChannel);
+  await removeChannelSafe(_stockChannel);
+  _ordersChannel = null;
+  _stockChannel = null;
+}
+
+export async function startRealtimeSync() {
+  const sb = getSupabase();
+  if (!sb || !A.cUser) return;
+
+  await stopRealtimeSync();
+
+  _ordersChannel = subscribeOrders(() => {
+    debounce(() => {
+      loadOrdersIntoState().catch((error) => console.warn('[BOB] realtime orders refresh failed:', error));
+    }, 250, ordersDebounceRef);
+  });
+
+  _stockChannel = subscribeStock(() => {
+    debounce(() => {
+      loadStockIntoState().catch((error) => console.warn('[BOB] realtime stock refresh failed:', error));
+    }, 250, stockDebounceRef);
+  });
 }
 
 // ── Messages (chat) ────────────────────────────────────────
