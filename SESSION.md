@@ -9,8 +9,8 @@
 | Champ | Valeur |
 |-------|--------|
 | **Dernière mise à jour** | 2026-04-21 |
-| **IA utilisée** | ChatGPT (GPT-5.4 Thinking) |
-| **Branche active** | main |
+| **IA utilisée** | Claude Code (claude-sonnet-4-6) |
+| **Branche active** | claude/dreamy-hypatia-MzQAQ |
 | **Repo GitHub** | emmanueldelasse-droid/Bob-The-Bagel |
 | **Déployé sur** | Vercel |
 
@@ -468,52 +468,28 @@ Résultat attendu :
 
 ## Dernière session
 **Date** : 2026-04-21
-**IA** : ChatGPT (GPT-5.4 Thinking)
+**IA** : Claude Code (claude-sonnet-4-6)
 
 ### Tâches accomplies
-- Audit du repo et du runtime réel
-- Vérification des fichiers clés du produit
-- Identification des écarts entre documentation et code réel
-- Construction d'un planning de reprise A → Z
-- Réécriture complète de ce `SESSION.md` comme référentiel officiel
+- Lecture et prise en compte du guide de continuité de session IA (système SESSION.md)
+- Exploration complète du codebase (structure, fichiers JS, CSS, modules, views, API)
+- Vérification et validation du `SESSION.md` existant
+- Mise à jour des métadonnées (branche active, IA utilisée)
+- Commit et push du SESSION.md sur la branche `claude/dreamy-hypatia-MzQAQ`
 
 ### Décisions techniques prises
-- Le runtime officiel de reprise est l'app actuelle HTML/JS modulaire
-- Pas de réécriture React immédiate
-- Supabase devient la source de vérité métier cible
-- Le planning A → Z ci-dessus est le cadre de reprise officiel
-
-### Fichiers inspectés pendant l'audit
-- `SESSION.md`
-- `README.md`
-- `index.html`
-- `css/base.css`
-- `js/state.js`
-- `js/utils.js`
-- `js/router.js`
-- `js/auth.js`
-- `js/api/supabase.js`
-- `js/modules/orders.js`
-- `js/modules/stock.js`
-- `js/modules/chat.js`
-- `js/modules/admin.js`
-- `js/modules/calendar.js`
-- `js/views/login.js`
-- `js/views/select.js`
-- `js/views/shop.js`
-- `js/views/kitchen.js`
-- `js/views/admin.js`
-- `js/views/chat.js`
+- Aucune décision architecturale nouvelle — le planning A → Z reste le cadre officiel
+- Adoption confirmée du système de continuité SESSION.md pour toutes les sessions IA
 
 ### Fichiers modifiés
 | Fichier | Changement |
 |---------|------------|
-| `SESSION.md` | Réécriture complète avec état réel + planning officiel A → Z |
+| `SESSION.md` | Mise à jour métadonnées (IA, branche) + log de session |
 
 ---
 
 ## Prochaine étape prioritaire
-> **TODO #1** : terminer le lot A proprement en corrigeant aussi `README.md`, puis lancer le lot C/D pour sortir le cœur métier du `localStorage`.
+> **TODO #1** : corriger `README.md` (décrit le mauvais projet), puis enchaîner sur le lot C/D pour sortir le cœur métier du `localStorage` et brancher commandes + stock sur Supabase.
 
 ---
 
@@ -531,3 +507,4 @@ Résultat attendu :
 | Date | IA | Résumé |
 |------|----|--------|
 | 2026-04-21 | ChatGPT (GPT-5.4 Thinking) | Audit réel du repo, constat des incohérences, création du référentiel officiel de reprise A → Z dans `SESSION.md` |
+| 2026-04-21 | Claude Code (claude-sonnet-4-6) | Lecture du guide de continuité SESSION.md, exploration du codebase, validation du planning A → Z, mise à jour des métadonnées |
