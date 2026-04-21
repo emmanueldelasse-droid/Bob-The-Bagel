@@ -52,7 +52,7 @@ export function normalizeOrderRow(row) {
   if (!row) return null;
 
   const shopId = pickFirst(row.shop_id, row.shopId);
-  const shop   = fallbackShop(shopId);
+  const shop = fallbackShop(shopId);
 
   return {
     id: pickFirst(row.id),
@@ -75,6 +75,27 @@ export function normalizeOrderRow(row) {
 
 function sortOrdersDesc(list) {
   return [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+export function normalizeStockRow(row) {
+  if (!row) return null;
+  return {
+    entityId: pickFirst(row.entity_id, row.entityId),
+    productId: pickFirst(row.product_id, row.productId),
+    qty: Number(pickFirst(row.qty, 0)) || 0,
+    alert: Number(pickFirst(row.alert, 0)) || 0,
+  };
+}
+
+function applyStockRowsToState(nextStock, rows) {
+  (rows || []).map(normalizeStockRow).filter(Boolean).forEach((row) => {
+    if (!row.entityId || !row.productId) return;
+    if (!nextStock[row.entityId]) nextStock[row.entityId] = {};
+    nextStock[row.entityId][row.productId] = {
+      qty: row.qty,
+      alert: row.alert,
+    };
+  });
 }
 
 async function tryQueries(builders) {
@@ -312,20 +333,66 @@ export async function fetchProducts() {
 // ── Stock ──────────────────────────────────────────────────
 export async function fetchStock(entityId) {
   const sb = getSupabase();
-  const { data, error } = await sb.from('stock').select('*').eq('entity_id', entityId);
-  if (error) throw error;
-  return data;
+  const rows = await tryQueries([
+    () => sb.from('stock').select('*').eq('entity_id', entityId),
+    () => sb.from('stock').select('*').eq('entityId', entityId),
+  ]);
+  return (rows || []).map(normalizeStockRow).filter(Boolean);
+}
+
+function buildStockPayloadVariants(entityId, productId, field, value) {
+  const ts = new Date().toISOString();
+  const base = field === 'qty' ? { qty: value } : { alert: value };
+  return [
+    compactObject({ entity_id: entityId, product_id: productId, ...base, updated_at: ts }),
+    compactObject({ entity_id: entityId, productId: productId, ...base, updated_at: ts }),
+    compactObject({ entityId, product_id: productId, ...base, updated_at: ts }),
+    compactObject({ entityId, productId, ...base, updatedAt: ts }),
+  ];
 }
 
 export async function updateStock(entityId, productId, field, value) {
   const sb = getSupabase();
-  const { error } = await sb.from('stock').upsert({
-    entity_id: entityId,
-    product_id: productId,
-    [field]: value,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'entity_id,product_id' });
-  if (error) throw error;
+  let lastError = null;
+  for (const payload of buildStockPayloadVariants(entityId, productId, field, value)) {
+    const { error } = await sb.from('stock').upsert(payload, { onConflict: 'entity_id,product_id' });
+    if (!error) return true;
+    lastError = error;
+  }
+  throw lastError || new Error('Mise à jour stock impossible');
+}
+
+export async function loadStockIntoState(entityIds = null) {
+  setRuntimeFlag('stockLoading', true);
+  setRuntimeFlag('stockError', '');
+
+  const ids = Array.isArray(entityIds) && entityIds.length
+    ? entityIds
+    : ['kitchen', ...SHOPS.map((shop) => shop.id)];
+
+  try {
+    const nextStock = JSON.parse(JSON.stringify(A.stock || {}));
+    ids.forEach((id) => {
+      if (!nextStock[id]) nextStock[id] = {};
+    });
+
+    for (const entityId of ids) {
+      const rows = await fetchStock(entityId);
+      applyStockRowsToState(nextStock, rows);
+    }
+
+    A.stock = nextStock;
+    setRuntimeFlag('stockHydrated', true);
+    setRuntimeFlag('lastStockSyncAt', new Date().toISOString());
+    return nextStock;
+  } catch (error) {
+    const msg = error?.message || 'Chargement du stock impossible';
+    setRuntimeFlag('stockError', msg);
+    console.warn('[BOB] loadStockIntoState:', error);
+    return A.stock;
+  } finally {
+    setRuntimeFlag('stockLoading', false);
+  }
 }
 
 // ── Messages (chat) ────────────────────────────────────────
