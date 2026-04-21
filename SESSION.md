@@ -16,7 +16,7 @@
 ## 2) RÉSUMÉ ULTRA-COURT
 - Runtime réel : app statique `index.html` + modules JS ES6, **pas React**.
 - Backend cible : Supabase comme **source de vérité unique**.
-- État réel : commandes + stock principaux sont branchés à Supabase avec hydratation, synchro live minimale, et états UI visibles loading/error, mais chat, calendrier, admin users et boutiques restent encore trop dépendants du front local.
+- État réel : commandes + stock sont déjà branchés à Supabase avec hydratation, synchro live minimale et états UI visibles, et le chat principal passe maintenant par Supabase pour les conversations/messages, avec synchro live et runtime visuel, mais photos, calendrier, admin users et boutiques restent encore à finaliser.
 
 ## 3) ÉTAT ACTUEL RÉEL
 ### Ce qui existe déjà
@@ -43,17 +43,17 @@
 - Écritures de stock critiques via helpers Supabase (mise à jour stock, réception commande, réception fournisseur)
 - Synchro live minimale commandes + stock démarrée au login / restore session et arrêtée au logout
 - États visuels loading/error/sync ajoutés dans les vues boutique et cuisine pour commandes/stock
+- Chat principal branché à Supabase : conversations + messages chargés au login / restore session, synchro live dédiée, runtime loading/error/sync dans la vue chat
 
 ### Ce qui reste faux / incomplet
-- Chat encore local
+- Photos chat non branchées dans l'UI finale
 - Calendrier encore local
 - Admin users faux : création locale alors que login réel = Supabase Auth
 - Mot de passe profil/admin non réellement branché
 - Boutiques encore codées en dur dans `SHOPS`
-- Droits par boutique non réellement appliqués
+- Droits par boutique non réellement appliqués côté front
 - Admin ne gère pas encore ajout/suppression boutiques
-- Photos chat non branchées dans l'UI finale
-- Couches commandes/stock encore à fiabiliser selon le vrai schéma Supabase en production
+- Couches commandes/stock/chat encore à fiabiliser selon le vrai schéma Supabase en production
 
 ## 4) STACK RÉELLE
 - Frontend : HTML + CSS + JavaScript ES6 modulaire
@@ -62,7 +62,7 @@
 - Router : `js/router.js`
 - Backend : Supabase
 - Auth : Supabase Auth
-- Persistance actuelle : commandes + stock branchés à Supabase, reste encore mixte avec `localStorage`
+- Persistance actuelle : commandes + stock + chat principal branchés à Supabase, reste encore mixte avec `localStorage`
 
 ## 5) DÉCISION CADRE
 - Ne **pas** lancer de réécriture React maintenant.
@@ -91,12 +91,12 @@
 - `js/views/chat.js`
 
 ## 7) PROCHAINE ACTION UNIQUE
-**NEXT_ACTION** : attaquer `chat` pour sortir le prochain gros bloc métier du `localStorage`, tout en gardant le même niveau de fiabilité visuelle et runtime.
+**NEXT_ACTION** : fiabiliser le chat sur le vrai schéma Supabase (conversations/messages), puis brancher les photos du chat ou attaquer les boutiques/accès réels selon priorité.
 
 ## 8) BLOCAGES / RISQUES
 - App encore hybride = comportement non totalement fiable en multi-utilisateur réel
-- Mapping Supabase volontairement défensif car schéma distant pas encore figé dans le repo
-- Faux sentiment de “fini” sur admin / chat / calendrier
+- Mapping Supabase encore partiellement défensif car schéma distant pas encore totalement reflété dans le front
+- Faux sentiment de “fini” sur admin / calendrier / photos chat
 - Référentiel visuel ancien possiblement contradictoire avec le runtime actuel
 
 ## 9) PLANNING D'AMÉLIORATION VIVANT
@@ -116,7 +116,7 @@
 | G1 | Refaire l'admin utilisateurs avec vrai flux Supabase Auth | TODO | P0 | Création de comptes réellement utilisables |
 | H1 | Sortir les boutiques du hardcode `SHOPS` | TODO | P1 | Boutiques dynamiques |
 | I1 | Appliquer les vrais droits par boutique | TODO | P1 | Accès filtrés correctement |
-| J1 | Brancher le chat réellement sur Supabase | TODO | P1 | Messagerie multi-utilisateur réelle |
+| J1 | Brancher le chat réellement sur Supabase | DOING | P1 | Messagerie multi-utilisateur réelle |
 | K1 | Ajouter les photos dans le chat | TODO | P1 | Échange de photos opérationnel |
 | L1 | Brancher le calendrier réellement sur Supabase | TODO | P1 | Calendrier partagé fiable |
 | M1 | Nettoyer logs et traçabilité | TODO | P2 | Audit utile |
@@ -132,14 +132,15 @@
 - Le `README.md` doit rester aligné avec la réalité du projet
 - Les commandes et le stock passent désormais par une couche Supabase défensive avant d'attaquer chat / admin / calendrier
 - La fiabilité passe maintenant aussi par la synchro live minimale et par des états UI visibles loading/error
+- Le chat principal passe désormais par Supabase avec conversations/messages réels, synchro live dédiée et runtime visuel
 
 ## 11) DERNIÈRE SESSION
 - Date : 2026-04-21
 - IA : ChatGPT (GPT-5.4 Thinking)
-- Fait : audit réel du repo + réécriture du référentiel + création du backlog vivant + correction du `README.md` + première bascule commandes vers Supabase + première bascule stock vers Supabase + ajout de la synchro live minimale commandes/stock + ajout des états UI loading/error visibles dans boutique et cuisine
-- Fichiers inspectés : `SESSION.md`, `README.md`, `index.html`, `js/state.js`, `js/auth.js`, `js/api/supabase.js`, `js/modules/orders.js`, `js/modules/stock.js`, `js/views/shop.js`, `js/views/kitchen.js`
-- Fichiers modifiés : `README.md`, `SESSION.md`, `js/state.js`, `js/api/supabase.js`, `js/modules/orders.js`, `js/modules/stock.js`, `js/auth.js`, `index.html`, `js/views/shop.js`, `js/views/kitchen.js`
-- Points ouverts : vérifier le comportement réel avec le schéma Supabase distant, puis migrer le chat
+- Fait : audit réel du repo + réécriture du référentiel + création du backlog vivant + correction du `README.md` + première bascule commandes vers Supabase + première bascule stock vers Supabase + synchro live minimale commandes/stock + états UI loading/error visibles commandes/stock + première bascule chat vers Supabase
+- Fichiers inspectés : `SESSION.md`, `js/state.js`, `js/auth.js`, `js/modules/chat.js`, `js/views/chat.js`
+- Fichiers modifiés : `js/state.js`, `js/auth.js`, `js/modules/chat.js`, `js/views/chat.js`, `SESSION.md`
+- Points ouverts : valider le chat sur la vraie base, puis photos chat ou boutiques/accès
 
 ## 12) FORMAT OBLIGATOIRE POUR TOUTE IA
 ### Au démarrage
