@@ -123,10 +123,9 @@ export const A = {
   stock:    ld('st', initStock()),
   receipts: ld('rc', []),
   events:   ld('ev', []),
-  messages: ld('msg', []),
-  conversations: ld('conv', [
-    { id: 'general', type: 'general', label: 'Général', icon: '📢' },
-  ]),
+  messages: [],
+  conversations: [],
+  chatSeen: ld('chat_seen', {}),
 
   sLog: ld('sl', []),
   aLog: ld('al', []),
@@ -186,6 +185,10 @@ export const A = {
     stockHydrated: false,
     stockError: '',
     lastStockSyncAt: null,
+    chatLoading: false,
+    chatHydrated: false,
+    chatError: '',
+    lastChatSyncAt: null,
   },
 };
 
@@ -207,6 +210,13 @@ export function resetStockRuntime() {
   A.runtime.lastStockSyncAt = null;
 }
 
+export function resetChatRuntime() {
+  A.runtime.chatLoading = false;
+  A.runtime.chatHydrated = false;
+  A.runtime.chatError = '';
+  A.runtime.lastChatSyncAt = null;
+}
+
 export function sv(k, v) {
   try {
     localStorage.setItem(k, JSON.stringify(v));
@@ -216,10 +226,14 @@ export function sv(k, v) {
 }
 
 export function clearAll() {
-  ['dk','lg','us','or','ks','pr','st','rc','sl','al','cl','bn','sn','msg','conv','ev'].forEach((k) => {
+  ['dk','lg','us','or','ks','pr','st','rc','sl','al','cl','bn','sn','msg','conv','ev','chat_seen'].forEach((k) => {
     localStorage.removeItem(k);
   });
   A.orders = [];
+  A.messages = [];
+  A.conversations = [];
+  A.chatSeen = {};
   resetOrdersRuntime();
   resetStockRuntime();
+  resetChatRuntime();
 }
