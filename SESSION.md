@@ -11,12 +11,12 @@
 - Branche : `main`
 - Déploiement : Vercel
 - Dernière mise à jour : 2026-04-21
-- Dernière IA : ChatGPT (GPT-5.4 Thinking)
+- Dernière IA : Codex (GPT-5)
 
 ## 2) RÉSUMÉ ULTRA-COURT
 - Runtime réel : app statique `index.html` + modules JS ES6, **pas React**.
 - Backend cible : Supabase comme **source de vérité unique**.
-- État réel : commandes + stock sont déjà branchés à Supabase avec hydratation, synchro live minimale et états UI visibles, et le chat principal passe maintenant par Supabase pour les conversations/messages, avec synchro live et runtime visuel, mais photos, calendrier, admin users et boutiques restent encore à finaliser.
+- État réel : commandes + stock sont déjà branchés à Supabase avec hydratation, synchro live minimale et états UI visibles, le chat principal passe maintenant par Supabase pour les conversations/messages avec synchro live et runtime visuel, et l'accueil login passe temporairement par lien magique email sans champ mot de passe, mais photos, calendrier, admin users et boutiques restent encore à finaliser.
 
 ## 3) ÉTAT ACTUEL RÉEL
 ### Ce qui existe déjà
@@ -34,6 +34,7 @@
 
 ### Ce qui est déjà branché côté Supabase
 - Auth email / mot de passe
+- Accueil login temporairement basculé en lien magique email Supabase
 - Profil utilisateur
 - API : orders, shops, products, stock, messages, upload photo
 - Realtime : orders, messages
@@ -133,14 +134,16 @@
 - Les commandes et le stock passent désormais par une couche Supabase défensive avant d'attaquer chat / admin / calendrier
 - La fiabilité passe maintenant aussi par la synchro live minimale et par des états UI visibles loading/error
 - Le chat principal passe désormais par Supabase avec conversations/messages réels, synchro live dédiée et runtime visuel
+- Le rendu chat ne doit jamais injecter brut les champs texte ou URL issus de Supabase
+- L'accueil login retire temporairement le champ mot de passe et passe par lien magique email
 
 ## 11) DERNIÈRE SESSION
 - Date : 2026-04-21
-- IA : ChatGPT (GPT-5.4 Thinking)
-- Fait : audit réel du repo + réécriture du référentiel + création du backlog vivant + correction du `README.md` + première bascule commandes vers Supabase + première bascule stock vers Supabase + synchro live minimale commandes/stock + états UI loading/error visibles commandes/stock + première bascule chat vers Supabase
-- Fichiers inspectés : `SESSION.md`, `js/state.js`, `js/auth.js`, `js/modules/chat.js`, `js/views/chat.js`
-- Fichiers modifiés : `js/state.js`, `js/auth.js`, `js/modules/chat.js`, `js/views/chat.js`, `SESSION.md`
-- Points ouverts : valider le chat sur la vraie base, puis photos chat ou boutiques/accès
+- IA : Codex (GPT-5)
+- Fait : audit du repo local + reprise du `SESSION.md` + durcissement du rendu chat contre l'injection HTML + validation des URL d'image du chat + échappement des messages toast + retrait temporaire du mot de passe à l'accueil au profit d'un lien magique email
+- Fichiers inspectés : `SESSION.md`, `js/utils.js`, `js/state.js`, `js/auth.js`, `js/modules/chat.js`, `js/views/chat.js`, `js/views/login.js`, `js/api/supabase.js`
+- Fichiers modifiés : `js/utils.js`, `js/views/chat.js`, `js/auth.js`, `js/views/login.js`, `js/api/supabase.js`, `SESSION.md`
+- Points ouverts : valider le chat sur la vraie base Supabase, puis brancher les photos chat ou attaquer boutiques/accès
 
 ## 12) FORMAT OBLIGATOIRE POUR TOUTE IA
 ### Au démarrage

@@ -20,7 +20,7 @@ export function getSupabase() {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: false,
+        detectSessionInUrl: true,
       },
     });
   }
@@ -140,6 +140,24 @@ export async function signIn(email, password) {
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) throw error;
   return data.user;
+}
+
+export async function requestMagicLink(email) {
+  const sb = getSupabase();
+  const redirectTo = typeof window !== 'undefined'
+    ? `${window.location.origin}${window.location.pathname}${window.location.search}`
+    : undefined;
+
+  const { data, error } = await sb.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: false,
+      emailRedirectTo: redirectTo,
+    },
+  });
+
+  if (error) throw error;
+  return data;
 }
 
 export async function signOut() {

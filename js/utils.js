@@ -60,6 +60,39 @@ export function cap(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
+export function escHtml(value = '') {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export function textToHtml(value = '') {
+  return escHtml(value).replace(/\r?\n/g, '<br>');
+}
+
+export function safeImageUrl(value) {
+  if (typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+
+  if (/^data:image\//i.test(trimmed)) return trimmed;
+
+  try {
+    const base = typeof window !== 'undefined' ? window.location.href : 'http://localhost/';
+    const url = new URL(trimmed, base);
+    if (['http:', 'https:', 'blob:'].includes(url.protocol)) {
+      return url.href;
+    }
+  } catch {
+    // ignore invalid URLs
+  }
+
+  return '';
+}
+
 // ── Produits ───────────────────────────────────────────────
 export function gP(id) {
   return A.products.find(p => p.id === id);
@@ -89,7 +122,7 @@ function rToasts() {
   const el = document.getElementById('toasts');
   if (el) {
     el.innerHTML = A.toasts
-      .map(t => `<div class="ti toast${t.type ? ' ' + t.type : ''}">${t.msg}</div>`)
+      .map(t => `<div class="ti toast${t.type ? ' ' + t.type : ''}">${escHtml(t.msg)}</div>`)
       .join('');
   }
 }

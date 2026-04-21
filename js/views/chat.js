@@ -1,10 +1,10 @@
 /* ============================================================
-   BOBtheBAGEL — views/chat.js
+   BOBtheBAGEL - views/chat.js
    Interface messagerie interne
    ============================================================ */
 
 import { A } from '../state.js';
-import { fD, fT } from '../utils.js';
+import { escHtml, fD, fT, safeImageUrl, textToHtml } from '../utils.js';
 import {
   messagesForConv,
   unreadForConv,
@@ -51,9 +51,9 @@ function runtimePanel({ kind = 'info', title, text, meta = '' }) {
       <div style="display:flex;align-items:flex-start;gap:8px">
         <div style="font-size:14px;line-height:1.2">${tone.icon}</div>
         <div style="min-width:0">
-          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:12px;letter-spacing:.2px">${title}</div>
-          <div style="font-size:12px;line-height:1.45;margin-top:2px">${text}</div>
-          ${meta ? `<div style="font-size:11px;opacity:.85;margin-top:4px">${meta}</div>` : ''}
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:12px;letter-spacing:.2px">${escHtml(title)}</div>
+          <div style="font-size:12px;line-height:1.45;margin-top:2px">${textToHtml(text)}</div>
+          ${meta ? `<div style="font-size:11px;opacity:.85;margin-top:4px">${textToHtml(meta)}</div>` : ''}
         </div>
       </div>
     </div>`;
@@ -90,6 +90,9 @@ function chatRuntimeNotice() {
 function msgBubble(message) {
   const isMe = message.senderId === A.cUser?.id;
   const isUrgent = message.priority === 'urgent';
+  const senderName = message.senderName || '?';
+  const senderInitial = senderName.trim().charAt(0).toUpperCase() || '?';
+  const photoUrl = safeImageUrl(message.photoUrl);
 
   const bubbleBg = isMe
     ? 'var(--txt)'
@@ -104,8 +107,8 @@ function msgBubble(message) {
     <div style="display:flex;flex-direction:column;align-items:${align};margin-bottom:10px;max-width:100%">
       ${!isMe ? `
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;padding:0 2px">
-          <div style="width:20px;height:20px;border-radius:6px;background:${roleColor(message.senderRole)};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${message.senderName?.[0] || '?'}</div>
-          <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:11px;color:var(--txt2)">${message.senderName}</span>
+          <div style="width:20px;height:20px;border-radius:6px;background:${roleColor(message.senderRole)};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${escHtml(senderInitial)}</div>
+          <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:11px;color:var(--txt2)">${escHtml(senderName)}</span>
           <span style="font-size:10px;color:var(--txt3)">${roleLabel(message.senderRole)}</span>
         </div>
       ` : ''}
@@ -114,10 +117,10 @@ function msgBubble(message) {
         ${isUrgent ? `
           <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:${isMe ? 'rgba(255,255,255,.6)' : '#E8294B'};margin-bottom:4px;display:flex;align-items:center;gap:4px">🚨 URGENT</div>
         ` : ''}
-        <div style="font-size:13px;line-height:1.5">${message.content}</div>
-        ${message.photoUrl ? `
+        <div style="font-size:13px;line-height:1.5">${textToHtml(message.content)}</div>
+        ${photoUrl ? `
           <div style="margin-top:8px">
-            <img src="${message.photoUrl}" alt="Photo message" style="max-width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.12);display:block" />
+            <img src="${escHtml(photoUrl)}" alt="Photo message" style="max-width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.12);display:block" />
           </div>
         ` : ''}
         <div style="font-size:10px;color:${isMe ? 'rgba(255,255,255,.5)' : 'var(--txt3)'};margin-top:4px;text-align:right">${fT(message.createdAt)}</div>
@@ -136,6 +139,8 @@ function convList() {
     const isActive = A.chatConvId === conv.id;
     const lastMsg = [...A.messages.filter((msg) => msg.convId === conv.id)]
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+    const label = escHtml(conv.label);
+    const preview = lastMsg ? escHtml(`${lastMsg.senderName} : ${lastMsg.content}`) : '';
 
     return `
       <button
@@ -147,11 +152,11 @@ function convList() {
         <div style="width:36px;height:36px;border-radius:10px;background:${conv.type === 'general' ? 'var(--txt)' : 'var(--bg)'};border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${conv.icon}</div>
         <div style="flex:1;min-width:0">
           <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--txt);display:flex;align-items:center;justify-content:space-between;gap:6px">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${conv.label}</span>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</span>
             ${unread > 0 ? `<span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;flex-shrink:0">${unread}</span>` : ''}
           </div>
           ${lastMsg ? `
-            <div style="font-size:11px;color:var(--txt3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${lastMsg.senderName} : ${lastMsg.content}</div>
+            <div style="font-size:11px;color:var(--txt3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${preview}</div>
           ` : `
             <div style="font-size:11px;color:var(--txt3);margin-top:2px">Aucun message</div>
           `}
@@ -217,7 +222,7 @@ export function bChat() {
             <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0">
               <div style="width:32px;height:32px;border-radius:8px;background:${activeConv.type === 'general' ? 'var(--txt)' : 'var(--bg3)'};border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px">${activeConv.icon}</div>
               <div>
-                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--txt)">${activeConv.label}</div>
+                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--txt)">${escHtml(activeConv.label)}</div>
                 <div style="font-size:11px;color:var(--txt3)">${msgs.length} message${msgs.length > 1 ? 's' : ''}</div>
               </div>
             </div>
@@ -228,7 +233,7 @@ export function bChat() {
               ` : msgs.length === 0 ? `
                 <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center">
                   <div style="font-size:32px;margin-bottom:10px">${activeConv.icon}</div>
-                  <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--txt);margin-bottom:4px">${activeConv.label}</div>
+                  <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--txt);margin-bottom:4px">${escHtml(activeConv.label)}</div>
                   <div style="font-size:13px;color:var(--txt2)">Aucun message pour l'instant.<br>Soyez le premier à écrire.</div>
                 </div>
               ` : `
