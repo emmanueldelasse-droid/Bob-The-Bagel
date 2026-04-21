@@ -5,7 +5,7 @@
 
 import { A, sv } from '../state.js';
 import { gId, nISO, dDel, toast, alog, render, isValidDelivery } from '../utils.js';
-import { createOrder as createOrderApi, loadOrdersIntoState, patchOrder } from '../api/supabase.js';
+import { createOrder as createOrderApi, loadOrdersIntoState, patchOrder, updateStock as updateStockApi, loadStockIntoState } from '../api/supabase.js';
 
 function currentTimestamp() {
   return nISO();
@@ -206,10 +206,14 @@ export function cfSRc(id) {
         const ns = JSON.parse(JSON.stringify(A.stock));
         if (!ns[order.shopId]) ns[order.shopId] = {};
 
-        (order.items || []).forEach((i) => {
-          if (!ns[order.shopId][i.id]) ns[order.shopId][i.id] = { qty: 0, alert: 10 };
-          ns[order.shopId][i.id].qty += i.qty;
-        });
+        for (const item of order.items || []) {
+          const current = ns[order.shopId][item.id] || { qty: 0, alert: 10 };
+          const nextQty = current.qty + item.qty;
+          const nextAlert = current.alert ?? 10;
+          ns[order.shopId][item.id] = { qty: nextQty, alert: nextAlert };
+          await updateStockApi(order.shopId, item.id, 'qty', nextQty);
+          await updateStockApi(order.shopId, item.id, 'alert', nextAlert);
+        }
 
         A.stock = ns;
         sv('st', A.stock);
@@ -218,6 +222,7 @@ export function cfSRc(id) {
         sv('sl', A.sLog);
 
         await refreshOrders();
+        await loadStockIntoState([order.shopId]);
         toast('Réception confirmée 📦');
         render();
       } catch (error) {
