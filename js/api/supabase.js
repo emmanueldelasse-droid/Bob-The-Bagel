@@ -575,6 +575,8 @@ export async function stopRealtimeSync() {
 }
 
 export async function startRealtimeSync() {
+  if (isTestMode()) return;
+
   const sb = getSupabase();
   if (!sb || !A.cUser) return;
 

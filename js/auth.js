@@ -87,7 +87,7 @@ function resetTransientState() {
   resetChatRuntime();
 }
 
-function enterTestProfile(role) {
+async function enterTestProfile(role) {
   const safeRole = role === 'admin' ? 'admin' : 'user';
   const user = buildTestUser(safeRole);
 
@@ -100,12 +100,13 @@ function enterTestProfile(role) {
   logConnection(`${user.name} (test)`);
   alog(`Acces test: ${user.name}`);
   openDefaultView(safeRole);
+  await startAuthenticatedApp();
   render();
 }
 
 export async function dLog(role = 'user') {
   await clearRemoteSession();
-  enterTestProfile(role);
+  await enterTestProfile(role);
 }
 
 export async function logout() {
@@ -140,6 +141,7 @@ export async function restoreSession() {
     if (A.testProfile) {
       A.cUser = buildTestUser(A.testProfile);
       openDefaultView(A.testProfile);
+      await startAuthenticatedApp();
       return true;
     }
 
