@@ -3,7 +3,7 @@
    ============================================================ */
 
 import { A } from '../state.js';
-import { canAccessKitchen } from '../auth.js';
+import { canAccessKitchen, isAdmin } from '../auth.js';
 
 export function bSelect() {
   const u = A.cUser;
@@ -82,6 +82,32 @@ export function bSelect() {
                 <div style="width:10px;height:10px;border-radius:50%;background:var(--amber);flex-shrink:0"></div>
                 <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:-.2px;color:var(--bg2)">
                   Cuisine centrale
+                </span>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:rgba(255,255,255,.5)">
+                <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          ` : ''}
+
+          ${isAdmin() ? `
+            <button
+              onclick="window.__BOB__.goAdm()"
+              style="
+                background:var(--red);
+                border:1.5px solid var(--red);
+                border-radius:var(--r);
+                padding:16px 18px;
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                margin-top:4px;
+              "
+            >
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:10px;height:10px;border-radius:50%;background:#fff;flex-shrink:0"></div>
+                <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:-.2px;color:#fff">
+                  Panneau admin
                 </span>
               </div>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:rgba(255,255,255,.5)">

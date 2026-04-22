@@ -50,13 +50,8 @@ function logConnection(label) {
   sv('cl', A.cLog);
 }
 
-function openDefaultView(role) {
+function openDefaultView(_role) {
   A.selShop = null;
-  if (role === 'admin') {
-    A.admTab = 'banner';
-    A.view = 'admin';
-    return;
-  }
   A.view = 'select';
 }
 
