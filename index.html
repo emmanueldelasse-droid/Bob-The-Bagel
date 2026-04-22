@@ -50,6 +50,7 @@ import {
 import {
   selectConv, sendMessage, setChatInput, setChatPriority,
   getOrCreateOrderConv, openOrderChat, deleteMessage,
+  sendChatPhoto, triggerChatPhotoInput, handleChatPhotoChange,
 } from './js/modules/chat.js';
 
 import {
@@ -58,6 +59,14 @@ import {
   tAP, sNP, aP2, tP,
   trPh, hdPh, svPr,
 } from './js/modules/admin.js';
+
+import {
+  setAuditTab, setAuditFilter,
+  openAuditDraft, openAuditDetail, editAudit, cancelAuditDraft,
+  setDraftShop, setDraftNote, setItemStatus, setItemComment,
+  triggerAuditPhotoInput, handleAuditPhotoChange, removeDraftPhoto,
+  saveAuditDraft, deleteAudit,
+} from './js/modules/audit.js';
 
 import { getSupabase } from './js/api/supabase.js';
 
@@ -95,11 +104,18 @@ window.__BOB__ = {
 
   selectConv, sendMessage, setChatInput, setChatPriority,
   getOrCreateOrderConv, openOrderChat, deleteMessage,
+  sendChatPhoto, triggerChatPhotoInput, handleChatPhotoChange,
 
   sAT, sBn, svBn, clBn,
   tAU, sNU, aU, dU,
   tAP, sNP, aP2, tP,
   trPh, hdPh, svPr,
+
+  setAuditTab, setAuditFilter,
+  openAuditDraft, openAuditDetail, editAudit, cancelAuditDraft,
+  setDraftShop, setDraftNote, setItemStatus, setItemComment,
+  triggerAuditPhotoInput, handleAuditPhotoChange, removeDraftPhoto,
+  saveAuditDraft, deleteAudit,
 };
 
 setBApp(() => bApp());

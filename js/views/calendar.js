@@ -3,7 +3,7 @@
    Vue liste · Vue semaine · Vue mois · Navigation · Checklist
    ============================================================ */
 
-import { A, SHOPS }      from '../state.js';
+import { A }      from '../state.js';
 import { isAdmin }       from '../auth.js';
 import { fD, fT }        from '../utils.js';
 import {
@@ -119,7 +119,7 @@ function calForm() {
           <div>
             <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--txt3);margin-bottom:7px">Boutiques concernées</div>
             <div style="display:flex;gap:7px;flex-wrap:wrap">
-              ${SHOPS.map(s => {
+              ${(A.shops || []).map(s => {
                 const sel = (f.shops || []).includes(s.id);
                 return `<button onclick="window.__BOB__.toggleCalShop('${s.id}')"
                   style="height:30px;padding:0 13px;border-radius:20px;border:1.5px solid ${sel ? s.color : 'var(--border)'};background:${sel ? s.color : 'transparent'};color:${sel ? '#fff' : 'var(--txt2)'};font-family:'Syne',sans-serif;font-weight:700;font-size:11px;cursor:pointer;transition:all .12s"
@@ -460,7 +460,7 @@ function viewMonth() {
       <!-- Légende -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
         ${A.calColorMode === 'shop'
-          ? SHOPS.map(s=>`<div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;border-radius:3px;background:${s.color}22;border:1px solid ${s.color}"></div><span style="font-size:10px;color:var(--txt2);font-weight:500">${s.name}</span></div>`).join('')
+          ? (A.shops || []).map(s=>`<div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;border-radius:3px;background:${s.color}22;border:1px solid ${s.color}"></div><span style="font-size:10px;color:var(--txt2);font-weight:500">${s.name}</span></div>`).join('')
           : Object.values(EVENT_STATUSES).map(s=>`<div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;border-radius:3px;background:${s.bg};border:1px solid ${s.color}"></div><span style="font-size:10px;color:var(--txt2);font-weight:500">${s.label}</span></div>`).join('')
         }
       </div>
@@ -496,7 +496,7 @@ export function bCalendar() {
           <button onclick="window.__BOB__.setCalFilter('all')"
             style="height:26px;padding:0 11px;border-radius:20px;white-space:nowrap;flex-shrink:0;border:1.5px solid ${A.calFilter==='all'?'var(--txt)':'var(--border)'};background:${A.calFilter==='all'?'var(--txt)':'transparent'};color:${A.calFilter==='all'?'var(--bg2)':'var(--txt2)'};font-family:'Syne',sans-serif;font-weight:700;font-size:10px;cursor:pointer"
           >Toutes</button>
-          ${SHOPS.map(s=>`
+          ${(A.shops || []).map(s=>`
             <button onclick="window.__BOB__.setCalFilter('${s.id}')"
               style="height:26px;padding:0 11px;border-radius:20px;white-space:nowrap;flex-shrink:0;border:1.5px solid ${A.calFilter===s.id?s.color:'var(--border)'};background:${A.calFilter===s.id?s.color:'transparent'};color:${A.calFilter===s.id?'#fff':'var(--txt2)'};font-family:'Syne',sans-serif;font-weight:700;font-size:10px;cursor:pointer"
             >${s.name}</button>`).join('')}

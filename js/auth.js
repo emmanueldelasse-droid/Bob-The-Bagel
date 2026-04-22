@@ -11,6 +11,7 @@ import {
   getCurrentProfile,
   loadOrdersIntoState,
   loadStockIntoState,
+  loadShopsIntoState,
   startRealtimeSync,
   stopRealtimeSync,
 } from './api/supabase.js';
@@ -19,6 +20,7 @@ import {
   startChatRealtimeSync,
   stopChatRealtimeSync,
 } from './modules/chat.js';
+import { loadAuditsIntoState } from './modules/audit.js';
 
 function buildTestUser(role) {
   const source = A.users.find((user) => user.role === role) || INIT_USERS.find((user) => user.role === role);
@@ -59,9 +61,11 @@ function openDefaultView(role) {
 }
 
 async function startAuthenticatedApp() {
+  await loadShopsIntoState();
   await loadOrdersIntoState();
   await loadStockIntoState();
   await loadChatIntoState();
+  await loadAuditsIntoState();
   await startRealtimeSync();
   await startChatRealtimeSync();
 }

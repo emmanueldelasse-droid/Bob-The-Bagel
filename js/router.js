@@ -3,7 +3,7 @@
    Routing principal · bApp · Navigation
    ============================================================ */
 
-import { A, SHOPS }            from './state.js';
+import { A }            from './state.js';
 import { dDel, render, setBApp } from './utils.js';
 import { isAdmin, canAccessKitchen } from './auth.js';
 import { bLogin }        from './views/login.js';
@@ -41,7 +41,7 @@ export function bApp() {
 export function goSel() { A.view = 'select'; render(); }
 
 export function goShop(id) {
-  const sh = SHOPS.find(s => s.id === id);
+  const sh = (A.shops || []).find(s => s.id === id);
   if (!sh) return;
 
   A.selShop = sh;

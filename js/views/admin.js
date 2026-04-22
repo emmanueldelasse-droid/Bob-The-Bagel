@@ -4,12 +4,14 @@
 
 import { A }        from '../state.js';
 import { aP, oCats, fD, fT } from '../utils.js';
+import { bAuditSection } from './audit.js';
 
 export function bAdmin() {
   const tabs = [
     { id: 'banner',  label: 'Bannière',    icon: '📢' },
     { id: 'users',   label: 'Utilisateurs',icon: '👥' },
     { id: 'prods',   label: 'Produits',    icon: '🛍' },
+    { id: 'audit',   label: 'Audit',       icon: '🔍' },
     { id: 'actlog',  label: 'Actions',     icon: '📋' },
     { id: 'connlog', label: 'Connexions',  icon: '🔐' },
   ];
@@ -19,6 +21,7 @@ export function bAdmin() {
     case 'banner':  content = secBanner();  break;
     case 'users':   content = secUsers();   break;
     case 'prods':   content = secProds();   break;
+    case 'audit':   content = bAuditSection(); break;
     case 'actlog':  content = secActLog();  break;
     case 'connlog': content = secConnLog(); break;
     default:        content = secBanner();

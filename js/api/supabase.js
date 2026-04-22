@@ -71,7 +71,7 @@ function parseItems(items) {
 }
 
 function fallbackShop(shopId) {
-  return SHOPS.find((shop) => shop.id === shopId) || null;
+  return (A.shops || SHOPS).find((shop) => shop.id === shopId) || SHOPS.find((shop) => shop.id === shopId) || null;
 }
 
 function debounce(fn, wait, timerKey) {
@@ -398,6 +398,60 @@ export async function fetchShops() {
   return data;
 }
 
+function normalizeShopRow(row) {
+  if (!row) return null;
+  return {
+    id: pickFirst(row.id, row.slug),
+    name: pickFirst(row.name, row.label, row.id),
+    color: pickFirst(row.color, row.brand_color, '#888'),
+  };
+}
+
+function fallbackShops() {
+  return clone(A.shops && A.shops.length ? A.shops : SHOPS);
+}
+
+export async function loadShopsIntoState() {
+  setRuntimeFlag('shopsLoading', true);
+  setRuntimeFlag('shopsError', '');
+
+  try {
+    if (isTestMode()) {
+      A.shops = fallbackShops();
+      sv('sh', A.shops);
+      setRuntimeFlag('shopsHydrated', true);
+      setRuntimeFlag('lastShopsSyncAt', new Date().toISOString());
+      return A.shops;
+    }
+
+    const rows = await fetchShops();
+    const mapped = (rows || []).map(normalizeShopRow).filter((shop) => shop && shop.id);
+
+    if (mapped.length) {
+      A.shops = mapped;
+      sv('sh', mapped);
+    } else {
+      A.shops = fallbackShops();
+      sv('sh', A.shops);
+    }
+
+    setRuntimeFlag('shopsHydrated', true);
+    setRuntimeFlag('lastShopsSyncAt', new Date().toISOString());
+    return A.shops;
+  } catch (error) {
+    const msg = error?.message || 'Chargement des boutiques impossible';
+    setRuntimeFlag('shopsError', msg);
+    console.warn('[BOB] loadShopsIntoState:', error);
+    if (!A.shops || !A.shops.length) {
+      A.shops = fallbackShops();
+      sv('sh', A.shops);
+    }
+    return A.shops;
+  } finally {
+    setRuntimeFlag('shopsLoading', false);
+  }
+}
+
 // ── Products ───────────────────────────────────────────────
 export async function fetchProducts() {
   const sb = getSupabase();
@@ -460,9 +514,10 @@ export async function loadStockIntoState(entityIds = null) {
   setRuntimeFlag('stockLoading', true);
   setRuntimeFlag('stockError', '');
 
+  const shopsList = (A.shops && A.shops.length) ? A.shops : SHOPS;
   const ids = Array.isArray(entityIds) && entityIds.length
     ? entityIds
-    : ['kitchen', ...SHOPS.map((shop) => shop.id)];
+    : ['kitchen', ...shopsList.map((shop) => shop.id)];
 
   try {
     if (isTestMode()) {

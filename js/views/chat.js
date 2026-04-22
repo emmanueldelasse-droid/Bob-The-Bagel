@@ -180,6 +180,15 @@ function inputZone(activeConv) {
       </div>
 
       <div style="display:flex;gap:8px;align-items:flex-end">
+        <input type="file" id="chat-photo-input" accept="image/*" style="display:none" onchange="window.__BOB__.handleChatPhotoChange(event)" />
+        <button
+          onclick="${disabled ? '' : 'window.__BOB__.triggerChatPhotoInput()'}"
+          title="Envoyer une photo"
+          style="width:40px;height:40px;flex-shrink:0;background:transparent;color:var(--txt2);border:1.5px solid var(--border);border-radius:10px;font-size:16px;cursor:${disabled ? 'default' : 'pointer'};display:flex;align-items:center;justify-content:center;transition:all .12s;opacity:${disabled ? '.5' : '1'}"
+          onmouseover="if(!${disabled}){this.style.borderColor='var(--txt)';this.style.color='var(--txt)'}"
+          onmouseout="if(!${disabled}){this.style.borderColor='var(--border)';this.style.color='var(--txt2)'}"
+        >📎</button>
+
         <textarea
           id="chat-input"
           placeholder="${disabled ? 'Aucune conversation disponible…' : 'Écrire un message…'}"
@@ -198,7 +207,7 @@ function inputZone(activeConv) {
           onmouseout="this.style.opacity='${disabled ? '.5' : '1'}'"
         >↑</button>
       </div>
-      <div style="font-size:10px;color:var(--txt3);margin-top:5px;padding:0 2px">Entrée pour envoyer · Shift+Entrée pour sauter une ligne</div>
+      <div style="font-size:10px;color:var(--txt3);margin-top:5px;padding:0 2px">Entrée pour envoyer · 📎 pour joindre une photo · Shift+Entrée pour sauter une ligne</div>
     </div>`;
 }
 
