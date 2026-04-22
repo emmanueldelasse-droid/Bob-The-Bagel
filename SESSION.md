@@ -31,6 +31,7 @@
 - Calendrier front
 - Bannière admin
 - Profil front
+- Audit boutique (admin → onglet Audit : liste, création, sections propreté/stock/équipements/hygiène/service, photos par item + photo générale, score auto OK/KO/N/A)
 
 ### Ce qui est déjà branché côté Supabase
 - Auth email / mot de passe toujours disponible côté backend cible
@@ -59,6 +60,7 @@
 - Couches commandes/stock/chat encore à fiabiliser selon le vrai schéma Supabase en production
 - `A.shops` est rempli depuis Supabase mais l'admin ne propose pas encore de CRUD boutiques
 - Photos chat en mode test = data URL en mémoire (perdue au rechargement)
+- Audits : table Supabase `audits` attendue (id, shop_id, shop_name, auditor_id, auditor_name, status, note, photos jsonb, sections jsonb, score, created_at, completed_at) + bucket `audit-photos` ; non provisionnés côté base à date. En mode test, audits + photos restent locaux (localStorage + data URL).
 
 ## 4) STACK RÉELLE
 - Frontend : HTML + CSS + JavaScript ES6 modulaire
@@ -88,15 +90,17 @@
 - `js/modules/chat.js`
 - `js/modules/admin.js`
 - `js/modules/calendar.js`
+- `js/modules/audit.js`
 - `js/views/login.js`
 - `js/views/select.js`
 - `js/views/shop.js`
 - `js/views/kitchen.js`
 - `js/views/admin.js`
 - `js/views/chat.js`
+- `js/views/audit.js`
 
 ## 7) PROCHAINE ACTION UNIQUE
-**NEXT_ACTION** : trancher le flux admin users sur Supabase Auth (G1, P0) — choix inscription directe vs invitation — puis appliquer les droits par boutique (I1) en se basant sur `A.shops`.
+**NEXT_ACTION** : provisionner côté Supabase la table `audits` et le bucket `audit-photos` (RLS admin/manager), puis trancher le flux admin users sur Supabase Auth (G1, P0) et appliquer les droits par boutique (I1).
 
 ## 8) BLOCAGES / RISQUES
 - App encore hybride = comportement non totalement fiable en multi-utilisateur réel
@@ -129,6 +133,7 @@
 | N1 | Trancher l'identité visuelle cible officielle | DECIDE | P2 | Plus de contradiction design/référentiel |
 | O1 | Supprimer les faux écrans “finis” | TODO | P1 | Produit plus honnête et plus propre |
 | P1 | Ajouter des états loading/error visibles sur commandes/stock | DONE | P1 | UX plus fiable et moins trompeuse |
+| Q1 | Section audit admin (propreté/stock/équipements/hygiène/service) | DOING | P1 | Manager peut auditer une boutique avec photos + score |
 
 ## 10) DERNIÈRES DÉCISIONS VALIDÉES
 - Runtime officiel de reprise = app actuelle HTML/JS modulaire
@@ -144,14 +149,16 @@
 - En mode test, commandes, stock ET chat doivent fonctionner localement si Supabase renvoie `Invalid API key`
 - Les photos chat transitent par `uploadPhoto` (bucket `chat-photos`) en prod, et par data URL en mode test, avec une limite de 2 Mo côté front
 - Les boutiques exposées à l'UI viennent de `A.shops` (hydraté via `loadShopsIntoState`) ; le hardcode `SHOPS` reste en seed/fallback uniquement dans `state.js` et `api/supabase.js`
+- Audits boutique : section dédiée côté admin avec sections prédéfinies (propreté/stock/équipements/hygiène/service), items ok/nok/na + commentaire + photos multiples, photo générale, score OK/KO auto, brouillon ou clôturé. Persistance locale (`A.audits`, clé `au`), upsert Supabase `audits` en prod (fallback silencieux vers local si erreur)
 
 ## 11) DERNIÈRE SESSION
 - Date : 2026-04-22
 - IA : Claude (Opus 4.7)
-- Fait : alignement du chat sur le mode test (fallback local conversations/messages) + branchement des photos chat (bouton 📎, upload Supabase Storage en prod, data URL en test) + sortie des boutiques du hardcode `SHOPS` via `A.shops` hydraté par `loadShopsIntoState` (avec fallback local/seed) + propagation aux vues select/shop/calendar et au module calendar
+- Fait : alignement du chat sur le mode test + photos chat (bouton 📎) + sortie des boutiques du hardcode `SHOPS` via `A.shops` hydraté par `loadShopsIntoState` + section Audit admin complète (module + vue + intégration onglet admin) avec sections prédéfinies propreté/stock/équipements/hygiène/service, items ok/nok/na + commentaires, photos multiples par item et photo générale, score auto, hydratation `loadAuditsIntoState` (Supabase `audits` en prod, fallback local en test)
 - Fichiers inspectés : `SESSION.md`, `index.html`, `js/state.js`, `js/auth.js`, `js/router.js`, `js/api/supabase.js`, `js/utils.js`, `js/modules/chat.js`, `js/modules/admin.js`, `js/modules/calendar.js`, `js/views/chat.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/calendar.js`, `js/views/admin.js`
-- Fichiers modifiés : `js/modules/chat.js`, `js/views/chat.js`, `js/state.js`, `js/auth.js`, `js/api/supabase.js`, `js/router.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/calendar.js`, `js/modules/calendar.js`, `index.html`, `SESSION.md`
-- Points ouverts : valider chat + photos contre la vraie base Supabase (bucket `chat-photos` RLS et schéma conversations/messages) ; valider schéma `shops` Supabase (colonnes `id/name/color/is_active`) ; ensuite attaquer G1 (admin users Supabase Auth) et I1 (droits par boutique)
+- Fichiers modifiés : `js/modules/chat.js`, `js/views/chat.js`, `js/state.js`, `js/auth.js`, `js/api/supabase.js`, `js/router.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/calendar.js`, `js/modules/calendar.js`, `js/views/admin.js`, `index.html`, `SESSION.md`
+- Fichiers créés : `js/modules/audit.js`, `js/views/audit.js`
+- Points ouverts : provisionner table `audits` et bucket `audit-photos` Supabase (+ RLS) ; valider chat + photos contre la vraie base Supabase ; valider schéma `shops` ; G1 (admin users Supabase Auth) et I1 (droits par boutique)
 
 ## 12) FORMAT OBLIGATOIRE POUR TOUTE IA
 ### Au démarrage

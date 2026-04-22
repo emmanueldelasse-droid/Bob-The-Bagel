@@ -60,6 +60,14 @@ import {
   trPh, hdPh, svPr,
 } from './js/modules/admin.js';
 
+import {
+  setAuditTab, setAuditFilter,
+  openAuditDraft, openAuditDetail, editAudit, cancelAuditDraft,
+  setDraftShop, setDraftNote, setItemStatus, setItemComment,
+  triggerAuditPhotoInput, handleAuditPhotoChange, removeDraftPhoto,
+  saveAuditDraft, deleteAudit,
+} from './js/modules/audit.js';
+
 import { getSupabase } from './js/api/supabase.js';
 
 const sb = getSupabase();
@@ -102,6 +110,12 @@ window.__BOB__ = {
   tAU, sNU, aU, dU,
   tAP, sNP, aP2, tP,
   trPh, hdPh, svPr,
+
+  setAuditTab, setAuditFilter,
+  openAuditDraft, openAuditDetail, editAudit, cancelAuditDraft,
+  setDraftShop, setDraftNote, setItemStatus, setItemComment,
+  triggerAuditPhotoInput, handleAuditPhotoChange, removeDraftPhoto,
+  saveAuditDraft, deleteAudit,
 };
 
 setBApp(() => bApp());

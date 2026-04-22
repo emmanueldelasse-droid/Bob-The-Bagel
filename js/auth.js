@@ -20,6 +20,7 @@ import {
   startChatRealtimeSync,
   stopChatRealtimeSync,
 } from './modules/chat.js';
+import { loadAuditsIntoState } from './modules/audit.js';
 
 function buildTestUser(role) {
   const source = A.users.find((user) => user.role === role) || INIT_USERS.find((user) => user.role === role);
@@ -64,6 +65,7 @@ async function startAuthenticatedApp() {
   await loadOrdersIntoState();
   await loadStockIntoState();
   await loadChatIntoState();
+  await loadAuditsIntoState();
   await startRealtimeSync();
   await startChatRealtimeSync();
 }
