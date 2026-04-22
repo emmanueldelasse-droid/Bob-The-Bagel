@@ -9,6 +9,7 @@ import { isAdmin } from '../auth.js';
 import { bSum } from './modals.js';
 import { bChat, chatBadge } from './chat.js';
 import { bCalendar, calBadge, calDashboardWidget } from './calendar.js';
+import { bAuditSection } from './audit.js';
 import { totalUnread } from '../modules/chat.js';
 import { getLowStock, stockLevel } from '../modules/stock.js';
 
@@ -648,6 +649,7 @@ export function bShop() {
     { id: 'profile', label: 'Profil',     icon: '👤' },
     { id: 'chat',    label: 'Messages',   icon: '💬' },
     { id: 'calendar',label: 'Calendrier', icon: '📅' },
+    ...(isAdmin() ? [{ id: 'audit', label: 'Audit', icon: '🔍' }] : []),
   ];
 
   let content = '';
@@ -658,6 +660,7 @@ export function bShop() {
     case 'profile':  content = tabProfile(); break;
     case 'chat':     content = bChat();      break;
     case 'calendar': content = bCalendar(); break;
+    case 'audit':    content = bAuditSection(); break;
     default:         content = tabOrder();
   }
 

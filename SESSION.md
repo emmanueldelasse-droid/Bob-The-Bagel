@@ -150,6 +150,8 @@
 - Les photos chat transitent par `uploadPhoto` (bucket `chat-photos`) en prod, et par data URL en mode test, avec une limite de 2 Mo côté front
 - Les boutiques exposées à l'UI viennent de `A.shops` (hydraté via `loadShopsIntoState`) ; le hardcode `SHOPS` reste en seed/fallback uniquement dans `state.js` et `api/supabase.js`
 - Audits boutique : section dédiée côté admin avec sections prédéfinies (propreté/stock/équipements/hygiène/service), items ok/nok/na + commentaire + photos multiples, photo générale, score OK/KO auto, brouillon ou clôturé. Persistance locale (`A.audits`, clé `au`), upsert Supabase `audits` en prod (fallback silencieux vers local si erreur)
+- Rôle admin = superset du rôle user : au login, l'admin atterrit désormais sur la page `select` comme un user (accès boutiques + cuisine + chat + calendrier via les onglets) et dispose en plus d'un bouton "Panneau admin" rouge sur `select` qui mène à `bAdmin` (bannière, utilisateurs, produits, audit, logs)
+- Audit contextuel : un onglet 🔍 Audit apparaît dans la vue boutique uniquement si l'utilisateur est admin. En contexte "shop" (`A.auditContext = 'shop'`), la liste est filtrée sur `A.selShop`, les filtres inter-boutiques sont masqués et le dropdown boutique de l'édition est remplacé par une puce figée. Le panneau admin garde la vue audit globale (`A.auditContext = 'admin'`) avec filtres + bouton par boutique.
 
 ## 11) DERNIÈRE SESSION
 - Date : 2026-04-22
@@ -158,6 +160,7 @@
 - Fichiers inspectés : `SESSION.md`, `index.html`, `js/state.js`, `js/auth.js`, `js/router.js`, `js/api/supabase.js`, `js/utils.js`, `js/modules/chat.js`, `js/modules/admin.js`, `js/modules/calendar.js`, `js/views/chat.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/calendar.js`, `js/views/admin.js`
 - Fichiers modifiés : `js/modules/chat.js`, `js/views/chat.js`, `js/state.js`, `js/auth.js`, `js/api/supabase.js`, `js/router.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/calendar.js`, `js/modules/calendar.js`, `js/views/admin.js`, `index.html`, `SESSION.md`
 - Fichiers créés : `js/modules/audit.js`, `js/views/audit.js`
+- Suivi : admin = user + spéciaux → login admin va désormais sur `select` et un bouton "Panneau admin" est exposé pour accéder à `bAdmin` (modifs : `js/auth.js`, `js/views/select.js`)
 - Points ouverts : provisionner table `audits` et bucket `audit-photos` Supabase (+ RLS) ; valider chat + photos contre la vraie base Supabase ; valider schéma `shops` ; G1 (admin users Supabase Auth) et I1 (droits par boutique)
 
 ## 12) FORMAT OBLIGATOIRE POUR TOUTE IA

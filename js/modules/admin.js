@@ -6,9 +6,14 @@
 import { A, sv }                              from '../state.js';
 import { gId, nISO, cap, toast, render, alog } from '../utils.js';
 import { createUserCredential, deleteUserCredential, changePassword } from '../auth.js';
+import { enterAdminAuditContext } from './audit.js';
 
 // ── Tabs admin ─────────────────────────────────────────────
-export function sAT(tab) { A.admTab = tab; render(); }
+export function sAT(tab) {
+  A.admTab = tab;
+  if (tab === 'audit') enterAdminAuditContext();
+  render();
+}
 
 // ── Bannière ───────────────────────────────────────────────
 export function sBn(v)  { A.banner = v; }
