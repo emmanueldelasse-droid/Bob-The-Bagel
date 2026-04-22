@@ -151,6 +151,7 @@
 - Les boutiques exposées à l'UI viennent de `A.shops` (hydraté via `loadShopsIntoState`) ; le hardcode `SHOPS` reste en seed/fallback uniquement dans `state.js` et `api/supabase.js`
 - Audits boutique : section dédiée côté admin avec sections prédéfinies (propreté/stock/équipements/hygiène/service), items ok/nok/na + commentaire + photos multiples, photo générale, score OK/KO auto, brouillon ou clôturé. Persistance locale (`A.audits`, clé `au`), upsert Supabase `audits` en prod (fallback silencieux vers local si erreur)
 - Rôle admin = superset du rôle user : au login, l'admin atterrit désormais sur la page `select` comme un user (accès boutiques + cuisine + chat + calendrier via les onglets) et dispose en plus d'un bouton "Panneau admin" rouge sur `select` qui mène à `bAdmin` (bannière, utilisateurs, produits, audit, logs)
+- Audit contextuel : un onglet 🔍 Audit apparaît dans la vue boutique uniquement si l'utilisateur est admin. En contexte "shop" (`A.auditContext = 'shop'`), la liste est filtrée sur `A.selShop`, les filtres inter-boutiques sont masqués et le dropdown boutique de l'édition est remplacé par une puce figée. Le panneau admin garde la vue audit globale (`A.auditContext = 'admin'`) avec filtres + bouton par boutique.
 
 ## 11) DERNIÈRE SESSION
 - Date : 2026-04-22

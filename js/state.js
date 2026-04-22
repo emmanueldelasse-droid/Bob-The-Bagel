@@ -160,6 +160,7 @@ export const A = {
   auditFilter:    'all',
   auditCurrentId: null,
   auditDraft:     null,
+  auditContext:   'admin',
 
   cart: {},
   note: '',

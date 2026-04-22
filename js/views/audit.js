@@ -76,8 +76,11 @@ function auditRow(audit) {
 }
 
 function viewList() {
+  const isShopCtx = A.auditContext === 'shop';
   const shops = A.shops || [];
-  const filter = A.auditFilter || 'all';
+  const ctxShop = isShopCtx ? shops.find((s) => s.id === A.auditFilter) : null;
+  const filter = isShopCtx ? (A.auditFilter || 'all') : (A.auditFilter || 'all');
+
   const list = A.audits
     .filter((a) => filter === 'all' || a.shopId === filter)
     .sort((a, b) => new Date(b.completedAt || b.createdAt) - new Date(a.completedAt || a.createdAt));
@@ -86,21 +89,26 @@ function viewList() {
     <div>
       <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--txt)">Audits boutique</div>
-          <div style="display:flex;gap:6px">
-            ${shops.map((s) => `
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--txt)">
+            ${isShopCtx && ctxShop ? `Audits · ${escHtml(ctxShop.name)}` : 'Audits boutique'}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${isShopCtx && ctxShop ? `
+              <button class="btn btn-primary btn-sm" onclick="window.__BOB__.openAuditDraft('${ctxShop.id}')"
+                style="background:${ctxShop.color};border-color:${ctxShop.color}">+ Nouvel audit</button>
+            ` : shops.map((s) => `
               <button class="btn btn-primary btn-sm" onclick="window.__BOB__.openAuditDraft('${s.id}')"
                 style="background:${s.color};border-color:${s.color}">+ ${escHtml(s.name)}</button>
             `).join('')}
           </div>
         </div>
-        ${filterButtons()}
+        ${isShopCtx ? '' : filterButtons()}
       </div>
 
       ${list.length === 0 ? `
         <div style="padding:50px 20px;text-align:center;color:var(--txt2);font-size:13px">
           Aucun audit ${filter === 'all' ? '' : 'pour cette boutique'} pour le moment.<br>
-          Lancez-en un avec les boutons ci-dessus.
+          Lancez-en un avec le bouton ci-dessus.
         </div>
       ` : list.map(auditRow).join('')}
     </div>`;
@@ -203,9 +211,13 @@ function viewEdit() {
       <div style="padding:14px 16px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <label style="font-size:11px;color:var(--txt3);font-weight:700;font-family:'Syne',sans-serif;letter-spacing:.5px">BOUTIQUE</label>
-          <select onchange="window.__BOB__.setDraftShop(this.value)" class="select" style="height:36px">
-            ${shops.map((s) => `<option value="${s.id}" ${draft.shopId === s.id ? 'selected' : ''}>${escHtml(s.name)}</option>`).join('')}
-          </select>
+          ${A.auditContext === 'shop' ? `
+            ${shopChip(draft.shopId)}
+          ` : `
+            <select onchange="window.__BOB__.setDraftShop(this.value)" class="select" style="height:36px">
+              ${shops.map((s) => `<option value="${s.id}" ${draft.shopId === s.id ? 'selected' : ''}>${escHtml(s.name)}</option>`).join('')}
+            </select>
+          `}
           <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
             <span style="font-size:11px;color:var(--txt3)">Score provisoire</span>
             ${scoreBadge(score.pct)}

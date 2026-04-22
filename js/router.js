@@ -6,6 +6,7 @@
 import { A }            from './state.js';
 import { dDel, render, setBApp } from './utils.js';
 import { isAdmin, canAccessKitchen } from './auth.js';
+import { enterShopAuditContext } from './modules/audit.js';
 import { bLogin }        from './views/login.js';
 import { bSelect }       from './views/select.js';
 import { bShop }         from './views/shop.js';
@@ -80,7 +81,11 @@ export function goAdm() {
 }
 
 // ── Tabs ───────────────────────────────────────────────────
-export function sSTb(t)  { A.sTab  = t; render(); }
+export function sSTb(t)  {
+  A.sTab = t;
+  if (t === 'audit' && A.selShop?.id) enterShopAuditContext(A.selShop.id);
+  render();
+}
 export function sKTb(t)  { A.kTab  = t; render(); }
 export function sSCat(c) { A.sCat  = c; render(); }
 export function sRCat(c) { A.rcCat = c; render(); }

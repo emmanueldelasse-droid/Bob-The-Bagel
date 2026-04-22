@@ -145,6 +145,21 @@ export function setAuditFilter(shopId) {
   render();
 }
 
+export function enterAdminAuditContext() {
+  A.auditContext = 'admin';
+  if (A.auditTab !== 'edit' && A.auditTab !== 'detail') {
+    A.auditTab = 'list';
+  }
+}
+
+export function enterShopAuditContext(shopId) {
+  A.auditContext = 'shop';
+  A.auditFilter = shopId;
+  if (A.auditTab !== 'edit' && A.auditTab !== 'detail') {
+    A.auditTab = 'list';
+  }
+}
+
 export function openAuditDraft(shopId) {
   const targetShopId = shopId || (A.shops || [])[0]?.id || null;
   if (!targetShopId) {
