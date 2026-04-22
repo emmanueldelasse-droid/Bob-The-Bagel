@@ -2,7 +2,7 @@
    BOBtheBAGEL — views/select.js v2
    ============================================================ */
 
-import { A, SHOPS } from '../state.js';
+import { A } from '../state.js';
 import { canAccessKitchen } from '../auth.js';
 
 export function bSelect() {
@@ -35,7 +35,7 @@ export function bSelect() {
 
         <!-- Boutiques -->
         <div style="display:flex;flex-direction:column;gap:8px">
-          ${SHOPS.map(sh => `
+          ${(A.shops || []).map(sh => `
             <button
               onclick="window.__BOB__.goShop('${sh.id}')"
               style="

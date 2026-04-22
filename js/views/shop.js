@@ -3,7 +3,7 @@
    Réécriture complète — layout produit compact
    ============================================================ */
 
-import { A, SHOPS, ORDER_STATUSES } from '../state.js';
+import { A, ORDER_STATUSES } from '../state.js';
 import { aP, oCats, gP, fD, fT, fDl } from '../utils.js';
 import { isAdmin } from '../auth.js';
 import { bSum } from './modals.js';
@@ -130,9 +130,9 @@ function shopHeader() {
       </div>
 
       <!-- Switch boutiques (si plusieurs) -->
-      ${SHOPS.length > 1 ? `
+      ${(A.shops || []).length > 1 ? `
         <div style="padding:6px 14px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border)">
-          ${SHOPS.map(s => `
+          ${(A.shops || []).map(s => `
             <button onclick="window.__BOB__.switchShop('${s.id}')"
               style="
                 height:28px;padding:0 12px;border-radius:20px;border:1.5px solid ${s.color};

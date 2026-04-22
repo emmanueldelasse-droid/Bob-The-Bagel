@@ -10,13 +10,13 @@
 - Repo : `emmanueldelasse-droid/Bob-The-Bagel`
 - Branche : `main`
 - Déploiement : Vercel
-- Dernière mise à jour : 2026-04-21
-- Dernière IA : Codex (GPT-5)
+- Dernière mise à jour : 2026-04-22
+- Dernière IA : Claude (Opus 4.7)
 
 ## 2) RÉSUMÉ ULTRA-COURT
 - Runtime réel : app statique `index.html` + modules JS ES6, **pas React**.
 - Backend cible : Supabase comme **source de vérité unique**.
-- État réel : commandes + stock sont déjà branchés à Supabase avec hydratation, synchro live minimale et états UI visibles, le chat principal passe maintenant par Supabase pour les conversations/messages avec synchro live et runtime visuel, et l'accueil ouvre maintenant un accès test direct par boutons Admin/User sans mot de passe ; en mode test local, commandes et stock retombent en local si la clé Supabase front est invalide.
+- État réel : commandes, stock et chat sont branchés à Supabase avec hydratation, synchro live et états UI visibles ; en mode test local, commandes, stock ET chat retombent désormais tous en local. Les photos chat sont envoyées (Supabase Storage en prod, data URL en test). Les boutiques sont maintenant hydratées depuis Supabase (`A.shops`) avec fallback local sur le hardcode `SHOPS`. L'accueil reste en accès test direct par boutons Admin/User.
 
 ## 3) ÉTAT ACTUEL RÉEL
 ### Ce qui existe déjà
@@ -46,16 +46,19 @@
 - Synchro live minimale commandes + stock démarrée au login / restore session et arrêtée au logout
 - États visuels loading/error/sync ajoutés dans les vues boutique et cuisine pour commandes/stock
 - Chat principal branché à Supabase : conversations + messages chargés au login / restore session, synchro live dédiée, runtime loading/error/sync dans la vue chat
+- Chat en mode test : conversations/messages gardés en mémoire locale (conversation "general" auto-créée), envoi texte et photo en data URL, aucune tentative Supabase
+- Photos chat : envoi branché via Supabase Storage (bucket `chat-photos`) avec fallback data URL en mode test, bouton 📎 dans la zone de saisie
+- Boutiques hydratées via `loadShopsIntoState` : `A.shops = ld('sh', SHOPS)` au boot, remplacé par le résultat de `fetchShops()` en prod, fallback local en test ou si la requête échoue
 
 ### Ce qui reste faux / incomplet
-- Photos chat non branchées dans l'UI finale
 - Calendrier encore local
 - Admin users faux : création locale alors que login réel = Supabase Auth
 - Mot de passe profil/admin non réellement branché
-- Boutiques encore codées en dur dans `SHOPS`
 - Droits par boutique non réellement appliqués côté front
 - Admin ne gère pas encore ajout/suppression boutiques
 - Couches commandes/stock/chat encore à fiabiliser selon le vrai schéma Supabase en production
+- `A.shops` est rempli depuis Supabase mais l'admin ne propose pas encore de CRUD boutiques
+- Photos chat en mode test = data URL en mémoire (perdue au rechargement)
 
 ## 4) STACK RÉELLE
 - Frontend : HTML + CSS + JavaScript ES6 modulaire
@@ -93,7 +96,7 @@
 - `js/views/chat.js`
 
 ## 7) PROCHAINE ACTION UNIQUE
-**NEXT_ACTION** : fiabiliser le chat sur le vrai schéma Supabase (conversations/messages), puis brancher les photos du chat ou attaquer les boutiques/accès réels selon priorité.
+**NEXT_ACTION** : trancher le flux admin users sur Supabase Auth (G1, P0) — choix inscription directe vs invitation — puis appliquer les droits par boutique (I1) en se basant sur `A.shops`.
 
 ## 8) BLOCAGES / RISQUES
 - App encore hybride = comportement non totalement fiable en multi-utilisateur réel
@@ -117,10 +120,10 @@
 | E1 | Brancher les commandes réellement sur Supabase | DOING | P0 | Commandes cohérentes boutique/cuisine |
 | F1 | Brancher le stock réellement sur Supabase | DOING | P0 | Stock partagé fiable |
 | G1 | Refaire l'admin utilisateurs avec vrai flux Supabase Auth | TODO | P0 | Création de comptes réellement utilisables |
-| H1 | Sortir les boutiques du hardcode `SHOPS` | TODO | P1 | Boutiques dynamiques |
+| H1 | Sortir les boutiques du hardcode `SHOPS` | DOING | P1 | Boutiques dynamiques |
 | I1 | Appliquer les vrais droits par boutique | TODO | P1 | Accès filtrés correctement |
-| J1 | Brancher le chat réellement sur Supabase | DOING | P1 | Messagerie multi-utilisateur réelle |
-| K1 | Ajouter les photos dans le chat | TODO | P1 | Échange de photos opérationnel |
+| J1 | Brancher le chat réellement sur Supabase | DONE | P1 | Messagerie multi-utilisateur réelle |
+| K1 | Ajouter les photos dans le chat | DOING | P1 | Échange de photos opérationnel |
 | L1 | Brancher le calendrier réellement sur Supabase | TODO | P1 | Calendrier partagé fiable |
 | M1 | Nettoyer logs et traçabilité | TODO | P2 | Audit utile |
 | N1 | Trancher l'identité visuelle cible officielle | DECIDE | P2 | Plus de contradiction design/référentiel |
@@ -138,15 +141,17 @@
 - Le chat principal passe désormais par Supabase avec conversations/messages réels, synchro live dédiée et runtime visuel
 - Le rendu chat ne doit jamais injecter brut les champs texte ou URL issus de Supabase
 - L'accueil login passe en mode test direct avec boutons Admin/User et persistance locale du profil choisi
-- En mode test, commandes et stock doivent fonctionner localement si Supabase renvoie `Invalid API key`
+- En mode test, commandes, stock ET chat doivent fonctionner localement si Supabase renvoie `Invalid API key`
+- Les photos chat transitent par `uploadPhoto` (bucket `chat-photos`) en prod, et par data URL en mode test, avec une limite de 2 Mo côté front
+- Les boutiques exposées à l'UI viennent de `A.shops` (hydraté via `loadShopsIntoState`) ; le hardcode `SHOPS` reste en seed/fallback uniquement dans `state.js` et `api/supabase.js`
 
 ## 11) DERNIÈRE SESSION
-- Date : 2026-04-21
-- IA : Codex (GPT-5)
-- Fait : audit du repo local + reprise du `SESSION.md` + durcissement du rendu chat contre l'injection HTML + validation des URL d'image du chat + échappement des messages toast + remplacement de l'accueil par un accès test direct Admin/User sans mot de passe + fallback local commandes/stock quand la clé Supabase front est invalide
-- Fichiers inspectés : `SESSION.md`, `js/utils.js`, `js/state.js`, `js/auth.js`, `js/modules/chat.js`, `js/views/chat.js`, `js/views/login.js`, `js/api/supabase.js`, `js/modules/orders.js`
-- Fichiers modifiés : `js/utils.js`, `js/views/chat.js`, `js/state.js`, `js/auth.js`, `js/views/login.js`, `js/api/supabase.js`, `SESSION.md`
-- Points ouverts : valider le chat sur la vraie base Supabase, puis brancher les photos chat ou attaquer boutiques/accès
+- Date : 2026-04-22
+- IA : Claude (Opus 4.7)
+- Fait : alignement du chat sur le mode test (fallback local conversations/messages) + branchement des photos chat (bouton 📎, upload Supabase Storage en prod, data URL en test) + sortie des boutiques du hardcode `SHOPS` via `A.shops` hydraté par `loadShopsIntoState` (avec fallback local/seed) + propagation aux vues select/shop/calendar et au module calendar
+- Fichiers inspectés : `SESSION.md`, `index.html`, `js/state.js`, `js/auth.js`, `js/router.js`, `js/api/supabase.js`, `js/utils.js`, `js/modules/chat.js`, `js/modules/admin.js`, `js/modules/calendar.js`, `js/views/chat.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/calendar.js`, `js/views/admin.js`
+- Fichiers modifiés : `js/modules/chat.js`, `js/views/chat.js`, `js/state.js`, `js/auth.js`, `js/api/supabase.js`, `js/router.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/calendar.js`, `js/modules/calendar.js`, `index.html`, `SESSION.md`
+- Points ouverts : valider chat + photos contre la vraie base Supabase (bucket `chat-photos` RLS et schéma conversations/messages) ; valider schéma `shops` Supabase (colonnes `id/name/color/is_active`) ; ensuite attaquer G1 (admin users Supabase Auth) et I1 (droits par boutique)
 
 ## 12) FORMAT OBLIGATOIRE POUR TOUTE IA
 ### Au démarrage

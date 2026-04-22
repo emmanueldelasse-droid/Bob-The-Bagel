@@ -4,15 +4,37 @@
    ============================================================ */
 
 import { A, sv, setRuntimeFlag } from '../state.js';
-import { nISO, render, toast } from '../utils.js';
-import { getSupabase } from '../api/supabase.js';
+import { nISO, render, toast, gId } from '../utils.js';
+import { getSupabase, uploadPhoto } from '../api/supabase.js';
+
+const CHAT_PHOTO_MAX_BYTES = 2 * 1024 * 1024; // 2 Mo
 
 let _messagesChannel = null;
 let _conversationsChannel = null;
 const chatDebounceRef = { current: null };
 
+function isTestMode() {
+  return !!A.testProfile;
+}
+
 function isUuid(value) {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function ensureLocalGeneralConv() {
+  const existing = A.conversations.find((conv) => conv.type === 'general');
+  if (existing) return existing;
+  const local = {
+    id: 'local-general',
+    type: 'general',
+    label: 'Général (test)',
+    orderId: null,
+    shopId: null,
+    icon: '📢',
+    createdAt: nISO(),
+  };
+  A.conversations = [local, ...A.conversations];
+  return local;
 }
 
 function debounce(fn, wait = 250) {
@@ -170,6 +192,14 @@ export async function loadChatIntoState() {
   setRuntimeFlag('chatError', '');
 
   try {
+    if (isTestMode()) {
+      ensureLocalGeneralConv();
+      A.chatConvId = currentActiveConversationId(A.conversations);
+      setRuntimeFlag('chatHydrated', true);
+      setRuntimeFlag('lastChatSyncAt', nISO());
+      return { conversations: A.conversations, messages: A.messages };
+    }
+
     let conversations = await fetchConversationsDb();
     if (!conversations.length) {
       await ensureGeneralConversationDb();
@@ -189,6 +219,8 @@ export async function loadChatIntoState() {
     const msg = error?.message || 'Chargement du chat impossible';
     setRuntimeFlag('chatError', msg);
     console.warn('[BOB] loadChatIntoState:', error);
+    if (!A.conversations.length) ensureLocalGeneralConv();
+    A.chatConvId = currentActiveConversationId(A.conversations);
     return { conversations: A.conversations, messages: A.messages };
   } finally {
     setRuntimeFlag('chatLoading', false);
@@ -213,6 +245,22 @@ export async function getOrCreateOrderConv(orderId, orderLabel) {
   if (existing) {
     selectConv(existing.id);
     return existing.id;
+  }
+
+  if (isTestMode()) {
+    const order = orderForConversation(orderId);
+    const local = {
+      id: `local-order-${orderId}`,
+      type: 'order',
+      label: orderLabel || (order ? `${order.shopName || 'Commande'} · ${order.id}` : `Commande ${orderId}`),
+      orderId,
+      shopId: order?.shopId || null,
+      icon: '📦',
+      createdAt: nISO(),
+    };
+    A.conversations = [...A.conversations, local];
+    selectConv(local.id);
+    return local.id;
   }
 
   const sb = getSupabase();
@@ -275,6 +323,30 @@ export async function sendMessage() {
     return;
   }
 
+  if (isTestMode()) {
+    A.messages = [...A.messages, {
+      id: `local-msg-${gId()}`,
+      convId,
+      senderId: A.cUser?.id,
+      senderName: A.cUser?.name || '?',
+      senderRole: A.cUser?.role || 'user',
+      content: text,
+      priority: A.chatPriority || 'normal',
+      photoUrl: null,
+      readBy: A.cUser?.id ? [A.cUser.id] : [],
+      createdAt: nISO(),
+    }];
+    A.chatInput = '';
+    A.chatPriority = 'normal';
+    markConversationSeen(convId);
+    render();
+    setTimeout(() => {
+      const feed = document.getElementById('chat-feed');
+      if (feed) feed.scrollTop = feed.scrollHeight;
+    }, 50);
+    return;
+  }
+
   const sb = getSupabase();
   if (!sb) {
     toast('Client Supabase indisponible', 'error');
@@ -307,6 +379,117 @@ export async function sendMessage() {
     console.warn('[BOB] sendMessage:', error);
     toast(error?.message || 'Envoi du message impossible', 'error');
     render();
+  }
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('Lecture fichier impossible'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Envoi photo ────────────────────────────────────────────
+export async function sendChatPhoto(file) {
+  if (!file) return;
+  const convId = A.chatConvId || A.conversations[0]?.id;
+  if (!convId) {
+    toast('Aucune conversation disponible', 'warn');
+    return;
+  }
+  if (!file.type?.startsWith('image/')) {
+    toast('Fichier non image', 'error');
+    return;
+  }
+  if (file.size > CHAT_PHOTO_MAX_BYTES) {
+    toast('Image trop lourde (max 2 Mo)', 'error');
+    return;
+  }
+
+  const caption = (A.chatInput || '').trim();
+  const priority = A.chatPriority || 'normal';
+
+  if (isTestMode()) {
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      A.messages = [...A.messages, {
+        id: `local-msg-${gId()}`,
+        convId,
+        senderId: A.cUser?.id,
+        senderName: A.cUser?.name || '?',
+        senderRole: A.cUser?.role || 'user',
+        content: caption,
+        priority,
+        photoUrl: dataUrl,
+        readBy: A.cUser?.id ? [A.cUser.id] : [],
+        createdAt: nISO(),
+      }];
+      A.chatInput = '';
+      A.chatPriority = 'normal';
+      markConversationSeen(convId);
+      render();
+      setTimeout(() => {
+        const feed = document.getElementById('chat-feed');
+        if (feed) feed.scrollTop = feed.scrollHeight;
+      }, 50);
+    } catch (error) {
+      console.warn('[BOB] sendChatPhoto (test):', error);
+      toast('Envoi photo impossible', 'error');
+    }
+    return;
+  }
+
+  const sb = getSupabase();
+  if (!sb) {
+    toast('Client Supabase indisponible', 'error');
+    return;
+  }
+
+  try {
+    const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const path = `chat/${convId}/${Date.now()}-${gId('P')}.${ext}`;
+    const publicUrl = await uploadPhoto(file, path);
+
+    const { error } = await sb.from('messages').insert({
+      conversation_id: convId,
+      sender_id: A.cUser?.id,
+      content: caption,
+      priority,
+      photo_url: publicUrl,
+      read_by: A.cUser?.id ? [A.cUser.id] : [],
+      created_at: nISO(),
+    });
+    if (error) throw error;
+
+    A.chatInput = '';
+    A.chatPriority = 'normal';
+    await loadChatIntoState();
+    markConversationSeen(convId);
+    render();
+    setTimeout(() => {
+      const feed = document.getElementById('chat-feed');
+      if (feed) feed.scrollTop = feed.scrollHeight;
+    }, 50);
+  } catch (error) {
+    console.warn('[BOB] sendChatPhoto:', error);
+    toast(error?.message || 'Envoi photo impossible', 'error');
+  }
+}
+
+export function triggerChatPhotoInput() {
+  document.getElementById('chat-photo-input')?.click();
+}
+
+export async function handleChatPhotoChange(event) {
+  const input = event?.target;
+  const file = input?.files?.[0];
+  if (!file) return;
+  try {
+    await sendChatPhoto(file);
+  } finally {
+    if (input) input.value = '';
   }
 }
 
@@ -363,6 +546,8 @@ export async function stopChatRealtimeSync() {
 }
 
 export async function startChatRealtimeSync() {
+  if (isTestMode()) return;
+
   const sb = getSupabase();
   if (!sb || !A.cUser) return;
 

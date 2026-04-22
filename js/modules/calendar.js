@@ -3,7 +3,7 @@
    Navigation · Duplication · Checklist · Export PDF
    ============================================================ */
 
-import { A, sv, SHOPS } from '../state.js';
+import { A, sv } from '../state.js';
 import { gId, nISO, render, toast } from '../utils.js';
 
 // ── Statuts ────────────────────────────────────────────────
@@ -247,8 +247,8 @@ export function filteredEvents() {
 }
 
 // ── Helpers boutique ───────────────────────────────────────
-export function shopName(id)  { return SHOPS.find(s => s.id === id)?.name  || id; }
-export function shopColor(id) { return SHOPS.find(s => s.id === id)?.color || '#888'; }
+export function shopName(id)  { return (A.shops || []).find(s => s.id === id)?.name  || id; }
+export function shopColor(id) { return (A.shops || []).find(s => s.id === id)?.color || '#888'; }
 
 // ── Export PDF fiche événement ─────────────────────────────
 export function exportEventPDF(id) {

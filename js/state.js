@@ -117,6 +117,7 @@ export const A = {
   lang: ld('lg', 'fr'),
 
   users:    ld('us', INIT_USERS),
+  shops:    ld('sh', SHOPS),
   orders:   ld('or', []),
   ksends:   ld('ks', []),
   products: ld('pr', INIT_PRODUCTS.map((p) => ({ ...p, active: true, price: 0 }))),
@@ -190,6 +191,10 @@ export const A = {
     chatHydrated: false,
     chatError: '',
     lastChatSyncAt: null,
+    shopsLoading: false,
+    shopsHydrated: false,
+    shopsError: '',
+    lastShopsSyncAt: null,
   },
 };
 
@@ -218,6 +223,13 @@ export function resetChatRuntime() {
   A.runtime.lastChatSyncAt = null;
 }
 
+export function resetShopsRuntime() {
+  A.runtime.shopsLoading = false;
+  A.runtime.shopsHydrated = false;
+  A.runtime.shopsError = '';
+  A.runtime.lastShopsSyncAt = null;
+}
+
 export function sv(k, v) {
   try {
     localStorage.setItem(k, JSON.stringify(v));
@@ -227,7 +239,7 @@ export function sv(k, v) {
 }
 
 export function clearAll() {
-  ['dk','lg','us','or','ks','pr','st','rc','sl','al','cl','bn','sn','msg','conv','ev','chat_seen','tp'].forEach((k) => {
+  ['dk','lg','us','sh','or','ks','pr','st','rc','sl','al','cl','bn','sn','msg','conv','ev','chat_seen','tp'].forEach((k) => {
     localStorage.removeItem(k);
   });
   A.orders = [];

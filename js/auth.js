@@ -11,6 +11,7 @@ import {
   getCurrentProfile,
   loadOrdersIntoState,
   loadStockIntoState,
+  loadShopsIntoState,
   startRealtimeSync,
   stopRealtimeSync,
 } from './api/supabase.js';
@@ -59,6 +60,7 @@ function openDefaultView(role) {
 }
 
 async function startAuthenticatedApp() {
+  await loadShopsIntoState();
   await loadOrdersIntoState();
   await loadStockIntoState();
   await loadChatIntoState();
