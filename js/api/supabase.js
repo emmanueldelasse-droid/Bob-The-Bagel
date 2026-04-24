@@ -250,17 +250,25 @@ export async function loadProfilesIntoState() {
 }
 
 // ── Shops (Manager CRUD) ───────────────────────────────────
+function isUuidLike(value) {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 export async function upsertShop(shop) {
   const sb = getSupabase();
   if (!sb) throw new Error('Client Supabase indisponible');
+  const hasServerId = isUuidLike(shop.id);
   const payload = compactObject({
-    id: shop.id,
+    id: hasServerId ? shop.id : undefined,
+    slug: shop.slug || (hasServerId ? undefined : shop.id) || null,
     name: shop.name,
-    color: shop.color || '#1A7A4A',
+    color: shop.color || '#0E4B30',
     is_active: shop.isActive !== false,
   });
-  const { error } = await sb.from('shops').upsert(payload);
+  const query = sb.from('shops').upsert(payload, { onConflict: hasServerId ? 'id' : 'slug' }).select('*').single();
+  const { data, error } = await query;
   if (error) throw error;
+  return normalizeShopRow(data);
 }
 
 export async function deleteShop(id) {
@@ -485,8 +493,10 @@ function normalizeShopRow(row) {
   if (!row) return null;
   return {
     id: pickFirst(row.id, row.slug),
-    name: pickFirst(row.name, row.label, row.id),
-    color: pickFirst(row.color, row.brand_color, '#888'),
+    slug: row.slug || null,
+    name: pickFirst(row.name, row.label, row.slug, row.id),
+    color: pickFirst(row.color, row.brand_color, '#0E4B30'),
+    isActive: row.is_active !== false,
   };
 }
 

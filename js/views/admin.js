@@ -189,7 +189,7 @@ function secShops() {
             <div style="width:14px;height:14px;border-radius:50%;background:${sh.color};flex-shrink:0;border:1.5px solid var(--border)"></div>
             <div style="min-width:0">
               <div class="display" style="font-size:13px;color:var(--txt)">${sh.name}</div>
-              <div style="font-size:11px;color:var(--txt3);margin-top:2px">${sh.id}</div>
+              <div style="font-size:11px;color:var(--txt3);margin-top:2px">${sh.slug || sh.id}</div>
             </div>
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">

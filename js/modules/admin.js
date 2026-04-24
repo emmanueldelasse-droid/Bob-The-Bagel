@@ -119,18 +119,25 @@ function slugify(s) {
 export async function aShop() {
   const f = A.nShop || {};
   if (!f.name?.trim()) { toast('Nom requis', 'error'); return; }
-  const id = (f.id?.trim() || slugify(f.name));
-  if ((A.shops || []).some((s) => s.id === id)) { toast('ID déjà utilisé', 'error'); return; }
-  const shop = { id, name: f.name.trim(), color: f.color || SHOP_COLORS[0], isActive: true };
-  A.shops = [...(A.shops || []), shop];
+  const slug = (f.id?.trim() || slugify(f.name));
+  if ((A.shops || []).some((s) => (s.slug || s.id) === slug)) { toast('Slug déjà utilisé', 'error'); return; }
+
+  const optimisticId = `local-${slug}`;
+  const optimistic = { id: optimisticId, slug, name: f.name.trim(), color: f.color || SHOP_COLORS[0], isActive: true };
+  A.shops = [...(A.shops || []), optimistic];
   sv('sh', A.shops);
+
   try {
-    await upsertShop(shop);
+    const saved = await upsertShop({ slug, name: optimistic.name, color: optimistic.color, isActive: true });
+    if (saved) {
+      A.shops = A.shops.map((s) => (s.id === optimisticId ? saved : s));
+      sv('sh', A.shops);
+    }
   } catch (error) {
     console.warn('[BOB] upsertShop failed (kept local):', error);
   }
   A.addShop = false;
-  alog(`Boutique créée: ${shop.name}`);
+  alog(`Boutique créée: ${optimistic.name}`);
   toast('Boutique ajoutée ✓');
   render();
 }
