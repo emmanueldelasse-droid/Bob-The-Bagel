@@ -2,8 +2,9 @@
    BOBtheBAGEL — views/select.js v2
    ============================================================ */
 
-import { A } from '../state.js';
+import { A, ROLE_LABELS } from '../state.js';
 import { canAccessKitchen, isAdmin } from '../auth.js';
+import { unseenCountForUser } from '../modules/notifications.js';
 
 export function bSelect() {
   const u = A.cUser;
@@ -11,7 +12,15 @@ export function bSelect() {
   return `
     <div class="center-page">
       <!-- Actions top right -->
-      <div style="position:absolute;top:16px;right:16px;display:flex;gap:6px">
+      <div style="position:absolute;top:16px;right:16px;display:flex;gap:6px;align-items:center">
+        ${(() => {
+          const n = unseenCountForUser(A.cUser);
+          return `
+            <button class="btn btn-ghost btn-sm btn-icon" style="position:relative;font-size:15px" onclick="window.__BOB__.toggleNotifs()">
+              🔔
+              ${n > 0 ? `<span style="position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;background:var(--red);color:#fff;font-size:10px;font-weight:800;border-radius:8px;display:flex;align-items:center;justify-content:center;line-height:1">${n > 9 ? '9+' : n}</span>` : ''}
+            </button>`;
+        })()}
         <button class="btn btn-ghost btn-sm btn-icon" onclick="window.__BOB__.toggleDark()" style="font-size:15px">◑</button>
         <button class="btn btn-ghost btn-sm" onclick="window.__BOB__.logout()">Déconnexion</button>
       </div>
@@ -26,7 +35,7 @@ export function bSelect() {
             <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--txt);letter-spacing:-.3px">
               Bonjour, ${u?.name || ''} 👋
             </div>
-            <div class="label" style="margin-top:2px">${(u?.role || '').toUpperCase()}</div>
+            <div class="label" style="margin-top:2px">${(ROLE_LABELS[u?.role] || u?.role || '').toUpperCase()}</div>
           </div>
         </div>
 

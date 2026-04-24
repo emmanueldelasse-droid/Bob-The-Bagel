@@ -5,11 +5,29 @@
 
 import { A } from '../state.js';
 import { escHtml, fD, fT, safeImageUrl, textToHtml } from '../utils.js';
+import { parseMentions } from '../modules/chat.js';
 import {
   messagesForConv,
   unreadForConv,
   totalUnread,
+  readersForMessage,
+  expectedReadersForConv,
+  typingUsersForActiveConv,
 } from '../modules/chat.js';
+
+function renderMessageBody(content) {
+  if (!content) return '';
+  const raw = String(content);
+  const mentions = parseMentions(raw);
+  let html = escHtml(raw).replace(/\r?\n/g, '<br>');
+  mentions.forEach((m) => {
+    const needle = escHtml(m.raw);
+    const color = m.role === 'admin' ? '#E8294B' : m.role === 'kitchen' ? '#D97706' : '#0E4B30';
+    const pill = `<span style="display:inline;padding:1px 6px;border-radius:8px;background:${color}33;color:${color};font-weight:800;vertical-align:baseline">${escHtml(m.raw)}</span>`;
+    html = html.split(needle).join(pill);
+  });
+  return html;
+}
 
 function roleColor(role) {
   if (role === 'admin') return '#E8294B';
@@ -18,9 +36,9 @@ function roleColor(role) {
 }
 
 function roleLabel(role) {
-  if (role === 'admin') return 'Admin';
+  if (role === 'admin') return 'Manager';
   if (role === 'kitchen') return 'Cuisine';
-  return 'Boutique';
+  return 'Team BTB';
 }
 
 function runtimePanel({ kind = 'info', title, text, meta = '' }) {
@@ -87,6 +105,34 @@ function chatRuntimeNotice() {
   return '';
 }
 
+function readReceipt(message, isMe) {
+  if (!isMe) return '';
+  const readers = readersForMessage(message).filter((u) => u.id !== message.senderId);
+  const expected = expectedReadersForConv(message.convId).filter((u) => u.id !== message.senderId);
+  if (!expected.length) return '';
+  const readCount = readers.length;
+
+  if (readCount === 0) {
+    return `<div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:2px;text-align:right">Envoyé</div>`;
+  }
+
+  const chips = readers.slice(0, 4).map((u) => {
+    const initial = escHtml((u.name || '?').charAt(0).toUpperCase());
+    return `<span title="${escHtml(u.name)}" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:${roleColor(u.role)};color:#fff;font-size:8px;font-weight:700;border:1px solid var(--txt)">${initial}</span>`;
+  }).join('');
+  const more = readers.length > 4 ? `<span style="font-size:9px;color:rgba(255,255,255,.6);margin-left:2px">+${readers.length - 4}</span>` : '';
+
+  const prefix = readCount === expected.length
+    ? `<span style="font-size:10px;color:rgba(255,255,255,.75);font-weight:700">Vu par tous</span>`
+    : `<span style="font-size:10px;color:rgba(255,255,255,.65)">Vu · ${readCount}/${expected.length}</span>`;
+
+  return `
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:3px">
+      ${prefix}
+      <span style="display:inline-flex;gap:2px">${chips}${more}</span>
+    </div>`;
+}
+
 function msgBubble(message) {
   const isMe = message.senderId === A.cUser?.id;
   const isUrgent = message.priority === 'urgent';
@@ -117,13 +163,14 @@ function msgBubble(message) {
         ${isUrgent ? `
           <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:${isMe ? 'rgba(255,255,255,.6)' : '#E8294B'};margin-bottom:4px;display:flex;align-items:center;gap:4px">🚨 URGENT</div>
         ` : ''}
-        <div style="font-size:13px;line-height:1.5">${textToHtml(message.content)}</div>
+        <div style="font-size:13px;line-height:1.5">${renderMessageBody(message.content)}</div>
         ${photoUrl ? `
           <div style="margin-top:8px">
             <img src="${escHtml(photoUrl)}" alt="Photo message" style="max-width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.12);display:block" />
           </div>
         ` : ''}
         <div style="font-size:10px;color:${isMe ? 'rgba(255,255,255,.5)' : 'var(--txt3)'};margin-top:4px;text-align:right">${fT(message.createdAt)}</div>
+        ${readReceipt(message, isMe)}
       </div>
     </div>`;
 }
@@ -165,12 +212,66 @@ function convList() {
   }).join('');
 }
 
+function typingHint() {
+  const users = typingUsersForActiveConv();
+  if (!users.length) return '';
+  const names = users.map((u) => u.name).slice(0, 3).join(', ');
+  const more = users.length > 3 ? `, +${users.length - 3}` : '';
+  return `
+    <div style="padding:6px 14px;background:var(--bg2);border-top:1px solid var(--border);font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:8px">
+      <span style="display:inline-flex;gap:3px;flex-shrink:0">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--txt2);animation:typingDot 1s infinite"></span>
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--txt2);animation:typingDot 1s infinite .2s"></span>
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--txt2);animation:typingDot 1s infinite .4s"></span>
+      </span>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${escHtml(names)}${more} ${users.length > 1 ? 'écrivent' : 'écrit'}…</span>
+    </div>`;
+}
+
+function mentionPickerPanel(disabled) {
+  if (disabled || !A.mentionPickerOpen) return '';
+  const rolePills = [
+    { token: '@Manager', label: 'Manager', role: 'admin' },
+    { token: '@Team BTB', label: 'Team BTB', role: 'user' },
+  ];
+  const users = (A.users || []).filter((u) => (u.name || '').trim());
+  return `
+    <div style="position:relative">
+      <div style="position:absolute;bottom:6px;left:0;right:0;background:var(--bg2);border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh2);padding:8px;display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch;z-index:30">
+        <div class="label" style="padding:0 4px">Groupes</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${rolePills.map((p) => `<button onclick="window.__BOB__.insertMention('${p.token}')"
+            style="height:32px;padding:0 12px;border-radius:16px;border:1.5px solid ${p.role === 'admin' ? 'var(--red)' : 'var(--green)'};background:${p.role === 'admin' ? 'var(--red)22' : 'var(--green)22'};color:${p.role === 'admin' ? 'var(--red)' : 'var(--green)'};font-size:12px;font-weight:700;cursor:pointer">${p.token}</button>`).join('')}
+        </div>
+        ${users.length ? `
+          <div class="label" style="padding:0 4px;margin-top:4px">Personnes</div>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            ${users.map((u) => {
+              const color = u.role === 'admin' ? 'var(--red)' : u.role === 'kitchen' ? 'var(--amber)' : 'var(--green)';
+              return `<button onclick="window.__BOB__.insertMention('@${(u.name || '').replace(/\\s+/g, ' ').trim()}')"
+                style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:transparent;border:1px solid transparent;border-radius:6px;cursor:pointer;text-align:left"
+                onmouseover="this.style.background='var(--bg3)';this.style.borderColor='var(--border)'"
+                onmouseout="this.style.background='transparent';this.style.borderColor='transparent'">
+                <span style="width:24px;height:24px;border-radius:6px;background:${color};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${escHtml((u.name || '?').charAt(0).toUpperCase())}</span>
+                <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(u.name)}</span>
+                <span style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px">${u.role === 'admin' ? 'Manager' : u.role === 'kitchen' ? 'Cuisine' : 'Team BTB'}</span>
+              </button>`;
+            }).join('')}
+          </div>
+        ` : ''}
+        <button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="window.__BOB__.toggleMentionPicker()">Fermer</button>
+      </div>
+    </div>`;
+}
+
 function inputZone(activeConv) {
   const isUrgent = A.chatPriority === 'urgent';
   const disabled = !activeConv;
 
   return `
-    <div style="padding:10px 14px;background:var(--bg2);border-top:1px solid var(--border)">
+    ${typingHint()}
+    ${mentionPickerPanel(disabled)}
+    <div style="padding:10px 14px;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:var(--bg2);border-top:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <button
           onclick="${disabled ? '' : `window.__BOB__.setChatPriority(${isUrgent ? "'normal'" : "'urgent'"})` }"
@@ -188,6 +289,12 @@ function inputZone(activeConv) {
           onmouseover="if(!${disabled}){this.style.borderColor='var(--txt)';this.style.color='var(--txt)'}"
           onmouseout="if(!${disabled}){this.style.borderColor='var(--border)';this.style.color='var(--txt2)'}"
         >📎</button>
+        <button
+          onclick="${disabled ? '' : 'window.__BOB__.toggleMentionPicker()'}"
+          title="Mentionner un utilisateur ou un groupe"
+          aria-pressed="${A.mentionPickerOpen ? 'true' : 'false'}"
+          style="width:40px;height:40px;flex-shrink:0;background:${A.mentionPickerOpen ? 'var(--green)22' : 'transparent'};color:${A.mentionPickerOpen ? 'var(--green)' : 'var(--txt2)'};border:1.5px solid ${A.mentionPickerOpen ? 'var(--green)' : 'var(--border)'};border-radius:10px;font-size:16px;font-weight:800;cursor:${disabled ? 'default' : 'pointer'};display:flex;align-items:center;justify-content:center;transition:all .12s;opacity:${disabled ? '.5' : '1'}"
+        >@</button>
 
         <textarea
           id="chat-input"
@@ -207,7 +314,7 @@ function inputZone(activeConv) {
           onmouseout="this.style.opacity='${disabled ? '.5' : '1'}'"
         >↑</button>
       </div>
-      <div style="font-size:10px;color:var(--txt3);margin-top:5px;padding:0 2px">Entrée pour envoyer · 📎 pour joindre une photo · Shift+Entrée pour sauter une ligne</div>
+      <div class="chat-hint-desktop" style="font-size:10px;color:var(--txt3);margin-top:5px;padding:0 2px">Entrée pour envoyer · 📎 photo · Shift+Entrée saut de ligne</div>
     </div>`;
 }
 
@@ -277,5 +384,5 @@ export function bChat() {
 export function chatBadge() {
   const n = totalUnread();
   if (n === 0) return '';
-  return `<span style="background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px;vertical-align:middle">${n > 9 ? '9+' : n}</span>`;
+  return `<span class="badge-pulse" style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;background:var(--red);color:#fff;font-size:11px;font-weight:800;padding:0 5px;border-radius:9px;margin-left:6px;line-height:1;outline:2px solid var(--bg2)">${n > 99 ? '99+' : n}</span>`;
 }

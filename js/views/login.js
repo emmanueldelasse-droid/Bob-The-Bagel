@@ -1,6 +1,7 @@
 /* ============================================================
    BOBtheBAGEL - views/login.js
-   Acces test direct
+   Selection directe du profil : Team BTB / Manager
+   (l'authentification Supabase sera branchee a la fin des tests)
    ============================================================ */
 
 export function bLogin() {
@@ -8,7 +9,7 @@ export function bLogin() {
     <div class="center-page">
       <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
         <div style="position:absolute;top:-80px;right:-80px;width:320px;height:320px;border-radius:50%;background:var(--txt);opacity:.04"></div>
-        <div style="position:absolute;bottom:-60px;left:-60px;width:240px;height:240px;border-radius:50%;background:var(--red);opacity:.06"></div>
+        <div style="position:absolute;bottom:-60px;left:-60px;width:240px;height:240px;border-radius:50%;background:var(--green);opacity:.06"></div>
       </div>
 
       <div style="position:relative;width:100%;max-width:380px">
@@ -21,22 +22,22 @@ export function bLogin() {
 
         <div style="display:flex;flex-direction:column;gap:10px">
           <div style="font-size:12px;line-height:1.5;color:var(--txt2);padding:2px 0 8px">
-            Mode test local. Entre directement sans mot de passe.
+            Sélectionne ton profil pour accéder à l'application.
           </div>
+
+          <button
+            class="btn btn-ghost btn-lg btn-full"
+            onclick="window.__BOB__.dLog('user')"
+          >
+            Entrer en Team BTB
+          </button>
 
           <button
             class="btn btn-primary btn-lg btn-full"
             style="margin-top:2px"
             onclick="window.__BOB__.dLog('admin')"
           >
-            Entrer en Admin
-          </button>
-
-          <button
-            class="btn btn-ghost btn-lg btn-full"
-            onclick="window.__BOB__.dLog('user')"
-          >
-            Entrer en User
+            Entrer en Manager
           </button>
         </div>
 

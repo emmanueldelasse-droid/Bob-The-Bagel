@@ -7,8 +7,13 @@ import { aP, oCats, gP, fD, fT, fDl } from '../utils.js';
 import { isAdmin } from '../auth.js';
 import { bChat, chatBadge } from './chat.js';
 import { bCalendar, calBadge, calDashboardWidget } from './calendar.js';
+import { unseenCountForUser } from '../modules/notifications.js';
+import { bPlanningSection } from './planning.js';
 import { totalUnread } from '../modules/chat.js';
 import { getLowStock } from '../modules/stock.js';
+import { enterShopPlanningContext } from '../modules/planning.js';
+
+export const KITCHEN_SHOP_ID = 'cuisine-centrale';
 
 function runtimePanel({ kind = 'info', title, text, meta = '' }) {
   const tones = {
@@ -392,6 +397,7 @@ export function bKitchen() {
     { id: 'receipts', label: 'Réceptions', icon: '🚛' },
     { id: 'chat',     label: 'Messages',   icon: '💬' },
     { id: 'calendar', label: 'Calendrier', icon: '📅' },
+    { id: 'planning', label: 'Planning',   icon: '📆' },
   ];
 
   let content = '';
@@ -401,6 +407,7 @@ export function bKitchen() {
     case 'receipts': content = tabKReceipts(); break;
     case 'chat':     content = bChat();        break;
     case 'calendar': content = bCalendar();   break;
+    case 'planning': content = bPlanningSection(); break;
     default:         content = tabKOrders();
   }
 
@@ -411,7 +418,7 @@ export function bKitchen() {
         <div class="tabs" style="background:transparent;border-color:rgba(255,255,255,.1)">
           ${tabs.map(t => `
             <button class="tab kitchen-tab${A.kTab === t.id ? ' on' : ''}" onclick="window.__BOB__.sKTb('${t.id}')">
-              ${t.icon} ${t.label}
+              ${t.icon} ${t.label}${t.id === 'chat' ? chatBadge() : t.id === 'calendar' ? calBadge() : ''}
             </button>
           `).join('')}
         </div>

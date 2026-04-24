@@ -5,6 +5,9 @@
 
 import { A, sv } from '../state.js';
 import { gId, nISO, render, toast } from '../utils.js';
+import { upsertCalendarEvent, deleteCalendarEventApi, loadCalendarIntoState } from '../api/supabase.js';
+
+export { loadCalendarIntoState };
 
 // ── Statuts ────────────────────────────────────────────────
 export const EVENT_STATUSES = {
@@ -130,37 +133,59 @@ export function removeCheckItem(itemId) {
 }
 
 // ── Sauvegarde ─────────────────────────────────────────────
-export function saveEvent() {
+export async function saveEvent() {
   const f = A.calForm;
   if (!f) return;
   if (!f.title?.trim()) { toast('Titre requis', 'error'); return; }
   if (!f.date)          { toast('Date requise', 'error'); return; }
 
+  const now = nISO();
+  let payload;
   if (f._editing) {
-    A.events = A.events.map(e =>
-      e.id === f._editing
-        ? { ...e, ...f, _editing: undefined, updatedAt: nISO() }
-        : e
-    );
-    toast('Événement mis à jour ✓');
+    const existing = A.events.find(e => e.id === f._editing) || {};
+    payload = { ...existing, ...f, _editing: undefined, updatedAt: now };
   } else {
-    const ev = {
+    payload = {
       id:        gId('EVT'),
       title:     f.title.trim(),
+      description: (f.notes || f.description || '').trim(),
       date:      f.date,
       time:      f.time || '',
+      endTime:   f.endTime || '',
       location:  f.location?.trim() || '',
       shops:     f.shops || [],
       status:    f.status || 'planned',
+      colorTag:  f.colorTag || null,
+      eventType: f.eventType || 'generic',
       covers:    f.covers || '',
       notes:     f.notes?.trim() || '',
       checklist: f.checklist || [],
+      authorId:  A.cUser?.id || null,
+      authorName: A.cUser?.name || '?',
       createdBy: A.cUser?.name || '?',
-      createdAt: nISO(),
-      updatedAt: nISO(),
+      createdAt: now,
+      updatedAt: now,
     };
-    A.events = [...A.events, ev];
-    toast('Événement créé ✓');
+  }
+
+  try {
+    const saved = await upsertCalendarEvent(payload);
+    const next = saved ? { ...payload, ...saved } : payload;
+    if (f._editing) {
+      A.events = A.events.map(e => e.id === f._editing ? next : e);
+      toast('Événement mis à jour ✓');
+    } else {
+      A.events = [...A.events, next];
+      toast('Événement créé ✓');
+    }
+  } catch (error) {
+    console.warn('[BOB] saveEvent remote failed, kept local:', error);
+    if (f._editing) {
+      A.events = A.events.map(e => e.id === f._editing ? payload : e);
+    } else {
+      A.events = [...A.events, payload];
+    }
+    toast('Événement enregistré (hors ligne)', 'warn');
   }
 
   sv('ev', A.events);
@@ -191,7 +216,12 @@ export function duplicateEvent(id) {
 export function deleteEvent(id) {
   A.confirm = {
     msg: 'Supprimer cet événement ?',
-    fn: () => {
+    fn: async () => {
+      try {
+        await deleteCalendarEventApi(id);
+      } catch (error) {
+        console.warn('[BOB] deleteEvent remote failed:', error);
+      }
       A.events = A.events.filter(e => e.id !== id);
       sv('ev', A.events);
       toast('Supprimé', 'error');
@@ -202,12 +232,18 @@ export function deleteEvent(id) {
 }
 
 // ── Statut rapide ──────────────────────────────────────────
-export function setEventStatus(id, status) {
-  A.events = A.events.map(e =>
-    e.id === id ? { ...e, status, updatedAt: nISO() } : e
-  );
+export async function setEventStatus(id, status) {
+  const existing = A.events.find(e => e.id === id);
+  if (!existing) return;
+  const next = { ...existing, status, updatedAt: nISO() };
+  A.events = A.events.map(e => e.id === id ? next : e);
   sv('ev', A.events);
   render();
+  try {
+    await upsertCalendarEvent(next);
+  } catch (error) {
+    console.warn('[BOB] setEventStatus remote failed:', error);
+  }
 }
 
 // ── Filtres & tabs ─────────────────────────────────────────
@@ -256,7 +292,6 @@ export function exportEventPDF(id) {
   if (!ev) return;
 
   const st     = EVENT_STATUSES[ev.status] || EVENT_STATUSES.planned;
-  const shops  = (ev.checklist || []);
   const checks = (ev.checklist || []);
 
   const dateLabel = (() => {

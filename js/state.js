@@ -39,10 +39,16 @@ export const ORDER_STATUSES = {
 };
 
 export const INIT_USERS = [
-  { id: 'u1', name: 'Admin',   role: 'admin',   photo: null },
-  { id: 'u2', name: 'User',    role: 'user',    photo: null },
-  { id: 'u3', name: 'Kitchen', role: 'kitchen', photo: null },
+  { id: 'u1', name: 'Manager',  role: 'admin',   photo: null },
+  { id: 'u2', name: 'Team BTB', role: 'user',    photo: null },
+  { id: 'u3', name: 'Kitchen',  role: 'kitchen', photo: null },
 ];
+
+export const ROLE_LABELS = {
+  admin:   'Manager',
+  user:    'Team BTB',
+  kitchen: 'Kitchen',
+};
 
 export const INIT_PRODUCTS = [
   { id: 'p-plain',       cat: 'PAINS',               sub: null,           name: 'PLAIN',                    unit: 'pcs', step: 1   },
@@ -123,11 +129,13 @@ export const A = {
   products: ld('pr', INIT_PRODUCTS.map((p) => ({ ...p, active: true, price: 0 }))),
   stock:    ld('st', initStock()),
   audits:   ld('au', []),
+  planning: ld('pl', []),
   receipts: ld('rc', []),
   events:   ld('ev', []),
   messages: [],
   conversations: [],
   chatSeen: ld('chat_seen', {}),
+  notifications: ld('nt', []),
 
   sLog: ld('sl', []),
   aLog: ld('al', []),
@@ -155,12 +163,23 @@ export const A = {
   chatConvId: 'general',
   chatInput:  '',
   chatPriority: 'normal',
+  typingUsers: [],
+  mentionPickerOpen: false,
 
   auditTab:       'list',
   auditFilter:    'all',
   auditCurrentId: null,
   auditDraft:     null,
   auditContext:   'admin',
+
+  planTab:      'week',
+  planShop:     null,
+  planRefDate:  new Date().toISOString().split('T')[0],
+  planDraft:    null,
+  planContext:  'admin',
+
+  reserveDraft: null,
+  showNotifs:   false,
 
   cart: {},
   note: '',
@@ -177,11 +196,17 @@ export const A = {
 
   addU:   false,
   addP:   false,
+  addShop: false,
   addRc:  false,
   showSL: false,
   admTab: 'banner',
-  nU:     { name: '', password: '', role: 'user' },
+  editingUserId: null,
+  editingShopId: null,
+  nU:     { name: '', password: '', role: 'user', shopIds: [] },
+  eU:     { id: '', name: '', role: 'user' },
   nP:     { name: '', cat: 'PAINS', unit: 'pcs', step: 1, price: 0 },
+  nShop:  { id: '', name: '', color: '#0E4B30' },
+  eShop:  { id: '', name: '', slug: '', color: '#0E4B30' },
   rcForm: { sup: '', cart: {} },
 
   runtime: {
@@ -206,6 +231,21 @@ export const A = {
     auditsHydrated: false,
     auditsError: '',
     lastAuditsSyncAt: null,
+    planningLoading: false,
+    planningHydrated: false,
+    planningError: '',
+    lastPlanningSyncAt: null,
+    notifsLoading: false,
+    notifsHydrated: false,
+    notifsError: '',
+    lastNotifsSyncAt: null,
+    eventsLoading: false,
+    eventsHydrated: false,
+    eventsError: '',
+    lastEventsSyncAt: null,
+    usersLoading: false,
+    usersHydrated: false,
+    usersError: '',
   },
 };
 
@@ -257,7 +297,7 @@ export function sv(k, v) {
 }
 
 export function clearAll() {
-  ['dk','lg','us','sh','or','ks','pr','st','rc','sl','al','cl','bn','sn','msg','conv','ev','chat_seen','tp','au'].forEach((k) => {
+  ['dk','lg','us','sh','or','ks','pr','st','rc','sl','al','cl','bn','sn','msg','conv','ev','chat_seen','tp','au','pl','nt'].forEach((k) => {
     localStorage.removeItem(k);
   });
   A.orders = [];

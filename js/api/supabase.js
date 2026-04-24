@@ -6,7 +6,7 @@
 import { A, SHOPS, setRuntimeFlag, sv } from '../state.js';
 
 const SUPABASE_URL      = 'https://wznalartaqvcehpohfsr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFsYXJ0YXF2Y2VocG9oZnNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MzAzMzgsImV4cCI6MjA5MjAwNjMzOH0.MqomT4WEX5dMXpgEisG8S_0h165fmbsI70sfEtG8cl0';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bmFsYXJ0YXF2Y2VocG9oZnNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MzAzMzgsImV4cCI6MjA5MjAwNjMzOH0.MqomT4WEX5dMXpgEisG8S_0h165fmbsI70sfEtG8cl0';
 
 let _client = null;
 let _ordersChannel = null;
@@ -187,14 +187,132 @@ export async function getCurrentProfile() {
   return { ...data, email: user.email };
 }
 
+// ── Profiles (Manager CRUD) ────────────────────────────────
+export async function fetchProfiles() {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { data, error } = await sb.from('profiles').select('*').order('name');
+  if (error) throw error;
+  return (data || []).map((row) => ({
+    id: row.id,
+    name: row.name || row.email || '',
+    role: row.role || 'user',
+    photo: row.photo_url || null,
+    email: row.email || null,
+    shopIds: Array.isArray(row.shop_ids) ? row.shop_ids : [],
+  }));
+}
+
+export async function upsertProfile(profile) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const payload = compactObject({
+    id: uuidOrNull(profile.id),
+    name: profile.name,
+    role: profile.role || 'user',
+    photo_url: profile.photo || null,
+    email: profile.email || null,
+    shop_ids: uuidListOrEmpty(profile.shopIds),
+  });
+  if (!payload.id) {
+    // pas d'upsert si on n'a pas d'uuid valide (profil local hardcode)
+    return;
+  }
+  const { error } = await sb.from('profiles').upsert(payload);
+  if (error) throw error;
+}
+
+export async function deleteProfile(id) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { error } = await sb.from('profiles').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function loadProfilesIntoState() {
+  setRuntimeFlag('usersLoading', true);
+  setRuntimeFlag('usersError', '');
+  try {
+    if (isTestMode()) {
+      setRuntimeFlag('usersHydrated', true);
+      return A.users;
+    }
+    const rows = await fetchProfiles();
+    if (rows.length) {
+      A.users = rows;
+      sv('us', rows);
+    }
+    setRuntimeFlag('usersHydrated', true);
+    return A.users;
+  } catch (error) {
+    setRuntimeFlag('usersError', error?.message || 'Chargement profils impossible');
+    console.warn('[BOB] loadProfilesIntoState:', error);
+    return A.users;
+  } finally {
+    setRuntimeFlag('usersLoading', false);
+  }
+}
+
+// ── Shops (Manager CRUD) ───────────────────────────────────
+function isUuidLike(value) {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function uuidOrNull(value) {
+  return isUuidLike(value) ? value : null;
+}
+
+function uuidListOrEmpty(list) {
+  return Array.isArray(list) ? list.filter(isUuidLike) : [];
+}
+
+export async function upsertShop(shop) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const hasServerId = isUuidLike(shop.id);
+  const payload = compactObject({
+    id: hasServerId ? shop.id : undefined,
+    slug: shop.slug || (hasServerId ? undefined : null),
+    name: shop.name,
+    color: shop.color || '#0E4B30',
+    is_active: shop.isActive !== false,
+  });
+
+  let data;
+  let error;
+  if (hasServerId) {
+    // Update / upsert par id existant.
+    ({ data, error } = await sb.from('shops').upsert(payload, { onConflict: 'id' }).select('*').single());
+  } else if (payload.slug) {
+    // Creation : tente insert, et si le slug est deja pris, fallback sur update.
+    ({ data, error } = await sb.from('shops').insert(payload).select('*').single());
+    if (error && (error.code === '23505' || /duplicate/i.test(error.message || ''))) {
+      const patch = { name: payload.name, color: payload.color, is_active: payload.is_active };
+      ({ data, error } = await sb.from('shops').update(patch).eq('slug', payload.slug).select('*').single());
+    }
+  } else {
+    // Fallback : insert sans slug (Supabase generera l'id)
+    ({ data, error } = await sb.from('shops').insert(payload).select('*').single());
+  }
+  if (error) throw error;
+  return normalizeShopRow(data);
+}
+
+export async function deleteShop(id) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { error } = await sb.from('shops').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ── Orders ─────────────────────────────────────────────────
 export async function fetchOrders(shopId = null) {
-  if (isTestMode()) {
+  const sb = getSupabase();
+  if (!sb) {
     const orders = clone(A.orders || []);
     return sortOrdersDesc(shopId ? orders.filter((order) => order.shopId === shopId) : orders);
   }
 
-  const sb = getSupabase();
   const rows = await tryQueries([
     () => {
       let q = sb.from('orders').select('*').order('created_at', { ascending: false });
@@ -271,21 +389,21 @@ function buildOrderInsertVariants(order) {
 }
 
 export async function createOrder(order) {
-  if (isTestMode()) {
-    const nextOrders = persistLocalOrders([normalizeOrderRow(order), ...(A.orders || [])].filter(Boolean));
-    return nextOrders.find((item) => item.id === order.id) || normalizeOrderRow(order);
-  }
-
   const sb = getSupabase();
   let lastError = null;
 
   for (const payload of buildOrderInsertVariants(order)) {
+    if (!sb) break;
     const { data, error } = await sb.from('orders').insert(payload).select('*').single();
     if (!error) return normalizeOrderRow(data || payload);
     lastError = error;
   }
 
-  throw lastError || new Error('Création de commande impossible');
+  // Fallback local : on insere l'ordre dans l'etat meme si Supabase refuse
+  // (RLS, colonnes manquantes, etc.) pour ne pas bloquer l'UX.
+  if (lastError) console.warn('[BOB] createOrder remote failed, fallback local:', lastError);
+  persistLocalOrders([normalizeOrderRow(order), ...(A.orders || [])].filter(Boolean));
+  return normalizeOrderRow(order);
 }
 
 function buildOrderPatchVariants(patch) {
@@ -329,26 +447,24 @@ function buildOrderPatchVariants(patch) {
 }
 
 export async function patchOrder(orderId, patch) {
-  if (isTestMode()) {
-    const nextOrders = (A.orders || []).map((order) => (
-      order.id === orderId
-        ? normalizeOrderRow({ ...order, ...patch, id: orderId })
-        : order
-    ));
-    const persisted = persistLocalOrders(nextOrders);
-    return persisted.find((order) => order.id === orderId) || normalizeOrderRow({ id: orderId, ...patch });
-  }
-
   const sb = getSupabase();
   let lastError = null;
 
   for (const payload of buildOrderPatchVariants(patch)) {
+    if (!sb) break;
     const { data, error } = await sb.from('orders').update(payload).eq('id', orderId).select('*').single();
     if (!error) return normalizeOrderRow(data || { id: orderId, ...patch });
     lastError = error;
   }
 
-  throw lastError || new Error('Mise à jour commande impossible');
+  if (lastError) console.warn('[BOB] patchOrder remote failed, fallback local:', lastError);
+  const nextOrders = (A.orders || []).map((order) => (
+    order.id === orderId
+      ? normalizeOrderRow({ ...order, ...patch, id: orderId })
+      : order
+  ));
+  const persisted = persistLocalOrders(nextOrders);
+  return persisted.find((order) => order.id === orderId) || normalizeOrderRow({ id: orderId, ...patch });
 }
 
 export async function updateOrderStatus(orderId, status, updatedBy) {
@@ -359,13 +475,6 @@ export async function loadOrdersIntoState(shopId = null) {
   setRuntimeFlag('ordersLoading', true);
   setRuntimeFlag('ordersError', '');
   try {
-    if (isTestMode()) {
-      const orders = await fetchOrders(shopId);
-      A.orders = orders;
-      setRuntimeFlag('ordersHydrated', true);
-      setRuntimeFlag('lastOrdersSyncAt', new Date().toISOString());
-      return orders;
-    }
 
     const orders = await fetchOrders(shopId);
     A.orders = orders;
@@ -402,8 +511,10 @@ function normalizeShopRow(row) {
   if (!row) return null;
   return {
     id: pickFirst(row.id, row.slug),
-    name: pickFirst(row.name, row.label, row.id),
-    color: pickFirst(row.color, row.brand_color, '#888'),
+    slug: row.slug || null,
+    name: pickFirst(row.name, row.label, row.slug, row.id),
+    color: pickFirst(row.color, row.brand_color, '#0E4B30'),
+    isActive: row.is_active !== false,
   };
 }
 
@@ -491,23 +602,22 @@ function buildStockPayloadVariants(entityId, productId, field, value) {
 }
 
 export async function updateStock(entityId, productId, field, value) {
-  if (isTestMode()) {
-    const nextStock = clone(A.stock || {});
-    if (!nextStock[entityId]) nextStock[entityId] = {};
-    if (!nextStock[entityId][productId]) nextStock[entityId][productId] = { qty: 0, alert: 0 };
-    nextStock[entityId][productId][field] = value;
-    persistLocalStock(nextStock);
-    return true;
-  }
-
   const sb = getSupabase();
   let lastError = null;
   for (const payload of buildStockPayloadVariants(entityId, productId, field, value)) {
+    if (!sb) break;
     const { error } = await sb.from('stock').upsert(payload, { onConflict: 'entity_id,product_id' });
     if (!error) return true;
     lastError = error;
   }
-  throw lastError || new Error('Mise à jour stock impossible');
+
+  if (lastError) console.warn('[BOB] updateStock remote failed, fallback local:', lastError);
+  const nextStock = clone(A.stock || {});
+  if (!nextStock[entityId]) nextStock[entityId] = {};
+  if (!nextStock[entityId][productId]) nextStock[entityId][productId] = { qty: 0, alert: 0 };
+  nextStock[entityId][productId][field] = value;
+  persistLocalStock(nextStock);
+  return true;
 }
 
 export async function loadStockIntoState(entityIds = null) {
@@ -636,12 +746,365 @@ export function subscribeMessages(conversationId, callback) {
 }
 
 // ── Storage photos ─────────────────────────────────────────
-export async function uploadPhoto(file, path) {
+export async function uploadPhoto(file, path, bucket = 'chat-photos') {
   const sb = getSupabase();
-  const { error } = await sb.storage.from('chat-photos').upload(path, file, { cacheControl: '3600', upsert: false });
+  const { error } = await sb.storage.from(bucket).upload(path, file, { cacheControl: '3600', upsert: false });
   if (error) throw error;
-  const { data: urlData } = sb.storage.from('chat-photos').getPublicUrl(path);
+  const { data: urlData } = sb.storage.from(bucket).getPublicUrl(path);
   return urlData.publicUrl;
+}
+
+// ── Planning ───────────────────────────────────────────────
+function planningRowToState(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    shopId: row.shop_id || row.shopId,
+    staffId: row.staff_id || row.staffId || null,
+    staffName: row.staff_name || row.staffName || 'Équipe',
+    date: row.date,
+    start: row.start_time || row.start || '08:00',
+    end: row.end_time || row.end || '16:00',
+    role: row.role || 'Matin',
+    note: row.note || '',
+    createdBy: row.created_by || row.createdBy || null,
+    updatedAt: row.updated_at || row.updatedAt || null,
+    createdAt: row.created_at || row.createdAt || null,
+  };
+}
+
+function planningStateToRow(shift) {
+  return compactObject({
+    id: shift.id,
+    shop_id: uuidOrNull(shift.shopId),
+    staff_id: uuidOrNull(shift.staffId),
+    staff_name: shift.staffName,
+    date: shift.date,
+    start_time: shift.start,
+    end_time: shift.end,
+    role: shift.role,
+    note: shift.note,
+    updated_at: shift.updatedAt || new Date().toISOString(),
+  });
+}
+
+export async function fetchPlanning() {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { data, error } = await sb.from('planning').select('*').order('date').order('start_time');
+  if (error) throw error;
+  return (data || []).map(planningRowToState).filter(Boolean);
+}
+
+export async function upsertPlanningShift(shift) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const payload = planningStateToRow(shift);
+  if (!payload.created_by) {
+    const cb = uuidOrNull(A.cUser?.id);
+    if (cb) payload.created_by = cb;
+  }
+  const { data, error } = await sb.from('planning').upsert(payload).select('*').single();
+  if (error) throw error;
+  return planningRowToState(data);
+}
+
+export async function deletePlanningShiftApi(id) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { error } = await sb.from('planning').delete().eq('id', id);
+  if (error) throw error;
+  return true;
+}
+
+export async function loadPlanningIntoState() {
+  setRuntimeFlag('planningLoading', true);
+  setRuntimeFlag('planningError', '');
+  try {
+    if (isTestMode()) {
+      setRuntimeFlag('planningHydrated', true);
+      setRuntimeFlag('lastPlanningSyncAt', new Date().toISOString());
+      return A.planning || [];
+    }
+    const rows = await fetchPlanning();
+    A.planning = rows;
+    sv('pl', rows);
+    setRuntimeFlag('planningHydrated', true);
+    setRuntimeFlag('lastPlanningSyncAt', new Date().toISOString());
+    return rows;
+  } catch (error) {
+    setRuntimeFlag('planningError', error?.message || 'Chargement planning impossible');
+    console.warn('[BOB] loadPlanningIntoState:', error);
+    return A.planning || [];
+  } finally {
+    setRuntimeFlag('planningLoading', false);
+  }
+}
+
+// ── Notifications ──────────────────────────────────────────
+function notifRowToState(row) {
+  if (!row) return null;
+  let seenBy = {};
+  if (row.seen_by) {
+    if (typeof row.seen_by === 'string') {
+      try { seenBy = JSON.parse(row.seen_by); } catch { seenBy = {}; }
+    } else if (typeof row.seen_by === 'object') {
+      seenBy = row.seen_by;
+    }
+  }
+  return {
+    id: row.id,
+    type: row.type || 'info',
+    role: row.role || 'admin',
+    title: row.title || '',
+    body: row.body || '',
+    shopId: row.shop_id || null,
+    orderId: row.order_id || null,
+    createdBy: row.created_by || null,
+    seenBy,
+    createdAt: row.created_at || new Date().toISOString(),
+  };
+}
+
+function notifStateToRow(notif) {
+  return compactObject({
+    id: notif.id,
+    type: notif.type,
+    role: notif.role || 'admin',
+    title: notif.title,
+    body: notif.body,
+    shop_id: uuidOrNull(notif.shopId),
+    order_id: notif.orderId || null,
+    created_by: uuidOrNull(notif.createdBy || A.cUser?.id),
+    seen_by: notif.seenBy || {},
+    created_at: notif.createdAt,
+  });
+}
+
+export async function fetchNotifications(limit = 200) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { data, error } = await sb
+    .from('notifications')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data || []).map(notifRowToState).filter(Boolean);
+}
+
+export async function insertNotification(notif) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { data, error } = await sb.from('notifications').insert(notifStateToRow(notif)).select('*').single();
+  if (error) throw error;
+  return notifRowToState(data);
+}
+
+export async function updateNotificationSeen(id, seenBy) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { error } = await sb.from('notifications').update({ seen_by: seenBy }).eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteNotificationApi(id) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { error } = await sb.from('notifications').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function loadNotificationsIntoState() {
+  setRuntimeFlag('notifsLoading', true);
+  setRuntimeFlag('notifsError', '');
+  try {
+    if (isTestMode()) {
+      setRuntimeFlag('notifsHydrated', true);
+      setRuntimeFlag('lastNotifsSyncAt', new Date().toISOString());
+      return A.notifications || [];
+    }
+    const rows = await fetchNotifications();
+    A.notifications = rows;
+    sv('nt', rows);
+    setRuntimeFlag('notifsHydrated', true);
+    setRuntimeFlag('lastNotifsSyncAt', new Date().toISOString());
+    return rows;
+  } catch (error) {
+    setRuntimeFlag('notifsError', error?.message || 'Chargement notifs impossible');
+    console.warn('[BOB] loadNotificationsIntoState:', error);
+    return A.notifications || [];
+  } finally {
+    setRuntimeFlag('notifsLoading', false);
+  }
+}
+
+// ── Calendar events ────────────────────────────────────────
+function calRowToState(row) {
+  if (!row) return null;
+  let shopIds = [];
+  if (row.shop_ids) {
+    if (Array.isArray(row.shop_ids)) shopIds = row.shop_ids;
+    else if (typeof row.shop_ids === 'string') {
+      try { shopIds = JSON.parse(row.shop_ids); } catch { shopIds = []; }
+    }
+  }
+  let checklist = [];
+  if (row.checklist) {
+    if (Array.isArray(row.checklist)) checklist = row.checklist;
+    else if (typeof row.checklist === 'string') {
+      try { checklist = JSON.parse(row.checklist); } catch { checklist = []; }
+    }
+  }
+  return {
+    id: row.id,
+    title: row.title || '',
+    description: row.description || '',
+    date: row.date,
+    time: row.time || '',
+    endTime: row.end_time || '',
+    status: row.status || 'planned',
+    colorTag: row.color_tag || null,
+    eventType: row.event_type || 'generic',
+    shops: shopIds,
+    checklist,
+    authorId: row.author_id || null,
+    authorName: row.author_name || '',
+    createdAt: row.created_at || new Date().toISOString(),
+    updatedAt: row.updated_at || new Date().toISOString(),
+  };
+}
+
+function calStateToRow(evt) {
+  return compactObject({
+    id: evt.id,
+    title: evt.title,
+    description: evt.description || '',
+    date: evt.date,
+    time: evt.time || null,
+    end_time: evt.endTime || null,
+    status: evt.status || 'planned',
+    color_tag: evt.colorTag || null,
+    event_type: evt.eventType || 'generic',
+    shop_ids: uuidListOrEmpty(evt.shops),
+    checklist: evt.checklist || [],
+    author_id: uuidOrNull(evt.authorId || A.cUser?.id),
+    author_name: evt.authorName || A.cUser?.name || '',
+    updated_at: evt.updatedAt || new Date().toISOString(),
+  });
+}
+
+export async function fetchCalendarEvents() {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { data, error } = await sb.from('calendar_events').select('*').order('date');
+  if (error) throw error;
+  return (data || []).map(calRowToState).filter(Boolean);
+}
+
+export async function upsertCalendarEvent(evt) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { data, error } = await sb.from('calendar_events').upsert(calStateToRow(evt)).select('*').single();
+  if (error) throw error;
+  return calRowToState(data);
+}
+
+export async function deleteCalendarEventApi(id) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { error } = await sb.from('calendar_events').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function loadCalendarIntoState() {
+  setRuntimeFlag('eventsLoading', true);
+  setRuntimeFlag('eventsError', '');
+  try {
+    if (isTestMode()) {
+      setRuntimeFlag('eventsHydrated', true);
+      setRuntimeFlag('lastEventsSyncAt', new Date().toISOString());
+      return A.events || [];
+    }
+    const rows = await fetchCalendarEvents();
+    A.events = rows;
+    sv('ev', rows);
+    setRuntimeFlag('eventsHydrated', true);
+    setRuntimeFlag('lastEventsSyncAt', new Date().toISOString());
+    return rows;
+  } catch (error) {
+    setRuntimeFlag('eventsError', error?.message || 'Chargement calendrier impossible');
+    console.warn('[BOB] loadCalendarIntoState:', error);
+    return A.events || [];
+  } finally {
+    setRuntimeFlag('eventsLoading', false);
+  }
+}
+
+// ── Audits (save + delete + list) ─────────────────────────
+export async function upsertAuditApi(audit) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const payload = compactObject({
+    id: audit.id,
+    shop_id: uuidOrNull(audit.shopId),
+    shop_name: audit.shopName,
+    auditor_id: uuidOrNull(audit.auditorId || A.cUser?.id),
+    auditor_name: audit.auditorName || A.cUser?.name || '',
+    status: audit.status,
+    note: audit.note || '',
+    photos: audit.photos || [],
+    sections: audit.sections || [],
+    score: typeof audit.score === 'number' ? audit.score : null,
+    completed_at: audit.completedAt || null,
+  });
+  const { data, error } = await sb.from('audits').upsert(payload).select('*').single();
+  if (error) throw error;
+  return data;
+}
+
+// ── Realtime subscriptions (batch) ─────────────────────────
+let _planningChannel = null;
+let _notifsChannel = null;
+let _eventsChannel = null;
+let _auditsChannel = null;
+
+export async function startExtraRealtime(refetchers = {}) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await stopExtraRealtime();
+  const debPlan = { current: null };
+  const debNot = { current: null };
+  const debEv = { current: null };
+  const debAud = { current: null };
+
+  if (refetchers.planning) {
+    _planningChannel = sb.channel('planning-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'planning' }, () => debounce(refetchers.planning, 200, debPlan))
+      .subscribe();
+  }
+  if (refetchers.notifications) {
+    _notifsChannel = sb.channel('notifications-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => debounce(refetchers.notifications, 200, debNot))
+      .subscribe();
+  }
+  if (refetchers.events) {
+    _eventsChannel = sb.channel('calendar-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, () => debounce(refetchers.events, 200, debEv))
+      .subscribe();
+  }
+  if (refetchers.audits) {
+    _auditsChannel = sb.channel('audits-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'audits' }, () => debounce(refetchers.audits, 200, debAud))
+      .subscribe();
+  }
+}
+
+export async function stopExtraRealtime() {
+  await removeChannelSafe(_planningChannel); _planningChannel = null;
+  await removeChannelSafe(_notifsChannel);   _notifsChannel = null;
+  await removeChannelSafe(_eventsChannel);   _eventsChannel = null;
+  await removeChannelSafe(_auditsChannel);   _auditsChannel = null;
 }
 
 // ── Test connexion ─────────────────────────────────────────

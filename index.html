@@ -2,10 +2,10 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>BOBtheBAGEL</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&family=Dancing+Script:wght@700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&family=Dancing+Script:wght@700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="css/base.css"/>
 <link rel="stylesheet" href="css/components.css"/>
 <link rel="stylesheet" href="css/layout.css"/>
@@ -35,7 +35,15 @@ import {
   stEQ, sEQ, svEQ, cxEQ,
   tO, tKS, tRc,
   okCf, cxCf,
+  openReserveDraft, setReserveItem, setReserveNote, cancelReserveDraft, submitReserve,
+  triggerReservePhotoInput, handleReservePhotoChange, removeReservePhoto,
 } from './js/modules/orders.js';
+
+import {
+  markAllSeen as markAllNotifsSeen,
+  markNotificationSeen,
+  removeNotification,
+} from './js/modules/notifications.js';
 
 import { uSt, tSL, tARc, sRS, sRC, sbRc, prtPDF } from './js/modules/stock.js';
 
@@ -51,6 +59,7 @@ import {
   selectConv, sendMessage, setChatInput, setChatPriority,
   getOrCreateOrderConv, openOrderChat, deleteMessage,
   sendChatPhoto, triggerChatPhotoInput, handleChatPhotoChange,
+  toggleMentionPicker, insertMention,
 } from './js/modules/chat.js';
 
 import {
@@ -58,6 +67,9 @@ import {
   tAU, sNU, aU, dU,
   tAP, sNP, aP2, tP,
   trPh, hdPh, svPr,
+  tAShop, sNShop, aShop, dShop, setShopColor, toggleUserShop,
+  startEditUser, cancelEditUser, sEU, saveEditUser,
+  startEditShop, cancelEditShop, sEShop, saveEditShop,
 } from './js/modules/admin.js';
 
 import {
@@ -67,6 +79,14 @@ import {
   triggerAuditPhotoInput, handleAuditPhotoChange, removeDraftPhoto,
   saveAuditDraft, deleteAudit,
 } from './js/modules/audit.js';
+
+import {
+  setPlanTab, setPlanShopFilter, setPlanRefDate, shiftPlanRef, planToday,
+  openPlanDraft, editPlanShift, cancelPlanDraft,
+  setPlanDraft, savePlanDraft, deletePlanShift, deletePlanSeries,
+  duplicateWeekToNext,
+  setPlanDraftMode, togglePlanDraftDay, resetPlanDraftWeek,
+} from './js/modules/planning.js';
 
 import { getSupabase } from './js/api/supabase.js';
 
@@ -92,6 +112,11 @@ window.__BOB__ = {
   stEQ, sEQ, svEQ, cxEQ,
   tO, tKS, tRc,
   okCf, cxCf,
+  openReserveDraft, setReserveItem, setReserveNote, cancelReserveDraft, submitReserve,
+  triggerReservePhotoInput, handleReservePhotoChange, removeReservePhoto,
+
+  markAllNotifsSeen, markNotificationSeen, removeNotification,
+  toggleNotifs: () => { A.showNotifs = !A.showNotifs; render(); },
 
   uSt, tSL, tARc, sRS, sRC, sbRc, prtPDF,
 
@@ -105,17 +130,26 @@ window.__BOB__ = {
   selectConv, sendMessage, setChatInput, setChatPriority,
   getOrCreateOrderConv, openOrderChat, deleteMessage,
   sendChatPhoto, triggerChatPhotoInput, handleChatPhotoChange,
+  toggleMentionPicker, insertMention,
 
   sAT, sBn, svBn, clBn,
   tAU, sNU, aU, dU,
   tAP, sNP, aP2, tP,
   trPh, hdPh, svPr,
+  tAShop, sNShop, aShop, dShop, setShopColor, toggleUserShop,
+  startEditUser, cancelEditUser, sEU, saveEditUser,
+  startEditShop, cancelEditShop, sEShop, saveEditShop,
 
   setAuditTab, setAuditFilter,
   openAuditDraft, openAuditDetail, editAudit, cancelAuditDraft,
   setDraftShop, setDraftNote, setItemStatus, setItemComment,
   triggerAuditPhotoInput, handleAuditPhotoChange, removeDraftPhoto,
   saveAuditDraft, deleteAudit,
+
+  setPlanTab, setPlanShopFilter, setPlanRefDate, shiftPlanRef, planToday,
+  openPlanDraft, editPlanShift, cancelPlanDraft,
+  setPlanDraft, savePlanDraft, deletePlanShift, deletePlanSeries, duplicateWeekToNext,
+  setPlanDraftMode, togglePlanDraftDay, resetPlanDraftWeek,
 };
 
 setBApp(() => bApp());

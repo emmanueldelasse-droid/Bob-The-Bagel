@@ -6,11 +6,16 @@
 import { A, sv, setRuntimeFlag } from '../state.js';
 import { nISO, render, toast, gId } from '../utils.js';
 import { getSupabase, uploadPhoto } from '../api/supabase.js';
+import { createNotification } from './notifications.js';
 
 const CHAT_PHOTO_MAX_BYTES = 2 * 1024 * 1024; // 2 Mo
 
 let _messagesChannel = null;
 let _conversationsChannel = null;
+let _presenceChannel = null;
+let _presenceConvId = null;
+let _typingClearTimer = null;
+let _typingThrottleAt = 0;
 const chatDebounceRef = { current: null };
 
 function isTestMode() {
@@ -27,7 +32,7 @@ function ensureLocalGeneralConv() {
   const local = {
     id: 'local-general',
     type: 'general',
-    label: 'Général (test)',
+    label: 'Général',
     orderId: null,
     shopId: null,
     icon: '📢',
@@ -44,6 +49,60 @@ function debounce(fn, wait = 250) {
 
 function persistChatSeen() {
   sv('chat_seen', A.chatSeen);
+}
+
+const MENTION_REGEX = /@([\p{L}0-9][\p{L}0-9_-]{0,23})/gu;
+
+export function parseMentions(text) {
+  if (!text) return [];
+  const normalize = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
+  const found = new Set();
+  const hits = [];
+  let match;
+  MENTION_REGEX.lastIndex = 0;
+  while ((match = MENTION_REGEX.exec(text)) !== null) {
+    const raw = match[1].trim();
+    if (!raw) continue;
+    const nRaw = normalize(raw);
+    let user = null;
+    if (nRaw === 'manager' || nRaw === 'managers') {
+      user = { id: '@manager', name: 'Manager', role: 'admin' };
+    } else if (nRaw === 'team' || nRaw === 'team-btb' || nRaw === 'teambtb') {
+      user = { id: '@user', name: 'Team BTB', role: 'user' };
+    } else {
+      user = A.users.find((u) => normalize(u.name) === nRaw || normalize(u.name).startsWith(nRaw));
+    }
+    if (user && !found.has(user.id)) {
+      found.add(user.id);
+      hits.push({ id: user.id, name: user.name, role: user.role, raw: match[0] });
+    }
+  }
+  return hits;
+}
+
+function notifyMentions(message, mentions, convLabel) {
+  if (!mentions.length) return;
+  const sender = message.senderName || '?';
+  const senderId = A.cUser?.id;
+  const senderRole = A.cUser?.role;
+  const rolesTargeted = new Set();
+  mentions.forEach((m) => {
+    if (m.id === senderId) return;
+    if (m.id === '@manager' && senderRole === 'admin') return;
+    if (m.id === '@user' && senderRole === 'user') return;
+    const body = `${sender} · ${convLabel || 'Chat'}\n${message.content}`.slice(0, 400);
+    if (m.id === '@manager') {
+      if (rolesTargeted.has('admin')) return;
+      rolesTargeted.add('admin');
+      createNotification({ type: 'chat-mention', role: 'admin', title: `Mention @Manager`, body });
+    } else if (m.id === '@user') {
+      if (rolesTargeted.has('user')) return;
+      rolesTargeted.add('user');
+      createNotification({ type: 'chat-mention', role: 'user', title: `Mention @Team BTB`, body });
+    } else {
+      createNotification({ type: 'chat-mention', role: m.role || 'user', title: `@${m.name} mentionné(e)`, body });
+    }
+  });
 }
 
 function orderForConversation(orderId) {
@@ -170,6 +229,62 @@ function markConversationSeen(convId) {
   const latest = messagesForConv(convId).slice(-1)[0]?.createdAt || nISO();
   A.chatSeen = { ...A.chatSeen, [convId]: latest };
   persistChatSeen();
+  markMessagesReadBy(convId);
+}
+
+function markMessagesReadBy(convId) {
+  const uid = A.cUser?.id;
+  if (!uid || !convId) return;
+  let changed = false;
+  A.messages = A.messages.map((msg) => {
+    if (msg.convId !== convId) return msg;
+    if (msg.senderId === uid) return msg;
+    const readBy = Array.isArray(msg.readBy) ? msg.readBy : [];
+    if (readBy.includes(uid)) return msg;
+    changed = true;
+    return { ...msg, readBy: [...readBy, uid] };
+  });
+  if (!changed) return;
+
+  if (!isTestMode()) {
+    const sb = getSupabase();
+    if (sb) {
+      const ids = A.messages
+        .filter((m) => m.convId === convId && m.senderId !== uid && Array.isArray(m.readBy) && m.readBy.includes(uid))
+        .map((m) => m.id)
+        .filter((id) => typeof id === 'string' && !id.startsWith('local-'));
+      ids.forEach(async (messageId) => {
+        try {
+          const msg = A.messages.find((m) => m.id === messageId);
+          await sb.from('messages').update({ read_by: msg.readBy }).eq('id', messageId);
+        } catch (error) {
+          console.warn('[BOB] read_by update failed:', error);
+        }
+      });
+    }
+  }
+}
+
+export function readersForMessage(message) {
+  const ids = Array.isArray(message?.readBy) ? message.readBy : [];
+  return ids
+    .map((uid) => A.users.find((u) => u.id === uid) || (A.cUser?.id === uid ? A.cUser : null))
+    .filter(Boolean);
+}
+
+export function expectedReadersForConv(convId) {
+  const conv = A.conversations.find((c) => c.id === convId);
+  const senderIds = new Set(A.messages.filter((m) => m.convId === convId).map((m) => m.senderId));
+  const users = A.users.filter((u) => u.role !== 'kitchen' || conv?.type !== 'shop');
+  const union = new Map();
+  users.forEach((u) => union.set(u.id, u));
+  senderIds.forEach((id) => {
+    if (!union.has(id)) {
+      const s = A.users.find((u) => u.id === id);
+      if (s) union.set(id, s);
+    }
+  });
+  return Array.from(union.values());
 }
 
 async function removeChannelSafe(channel) {
@@ -230,7 +345,9 @@ export async function loadChatIntoState() {
 // ── Sélection conversation ─────────────────────────────────
 export function selectConv(convId) {
   A.chatConvId = convId;
+  A.typingUsers = [];
   markConversationSeen(convId);
+  ensurePresenceChannel(convId);
   render();
 
   setTimeout(() => {
@@ -323,8 +440,10 @@ export async function sendMessage() {
     return;
   }
 
+  const mentions = parseMentions(text);
+
   if (isTestMode()) {
-    A.messages = [...A.messages, {
+    const msg = {
       id: `local-msg-${gId()}`,
       convId,
       senderId: A.cUser?.id,
@@ -333,12 +452,16 @@ export async function sendMessage() {
       content: text,
       priority: A.chatPriority || 'normal',
       photoUrl: null,
+      mentions,
       readBy: A.cUser?.id ? [A.cUser.id] : [],
       createdAt: nISO(),
-    }];
+    };
+    A.messages = [...A.messages, msg];
     A.chatInput = '';
     A.chatPriority = 'normal';
     markConversationSeen(convId);
+    const conv = A.conversations.find((c) => c.id === convId);
+    notifyMentions(msg, mentions, conv?.label);
     render();
     setTimeout(() => {
       const feed = document.getElementById('chat-feed');
@@ -356,10 +479,11 @@ export async function sendMessage() {
   try {
     const { error } = await sb.from('messages').insert({
       conversation_id: convId,
-      sender_id: A.cUser?.id,
+      sender_id: isUuid(A.cUser?.id) ? A.cUser.id : null,
       content: text,
       priority: A.chatPriority || 'normal',
-      read_by: A.cUser?.id ? [A.cUser.id] : [],
+      mentions: mentions.length ? mentions : null,
+      read_by: isUuid(A.cUser?.id) ? [A.cUser.id] : [],
       created_at: nISO(),
     });
 
@@ -369,6 +493,11 @@ export async function sendMessage() {
     A.chatPriority = 'normal';
     await loadChatIntoState();
     markConversationSeen(convId);
+    const conv = A.conversations.find((c) => c.id === convId);
+    notifyMentions({
+      senderName: A.cUser?.name || '?',
+      content: text,
+    }, mentions, conv?.label);
     render();
 
     setTimeout(() => {
@@ -435,7 +564,7 @@ export async function sendChatPhoto(file) {
         if (feed) feed.scrollTop = feed.scrollHeight;
       }, 50);
     } catch (error) {
-      console.warn('[BOB] sendChatPhoto (test):', error);
+      console.warn('[BOB] sendChatPhoto local:', error);
       toast('Envoi photo impossible', 'error');
     }
     return;
@@ -454,11 +583,11 @@ export async function sendChatPhoto(file) {
 
     const { error } = await sb.from('messages').insert({
       conversation_id: convId,
-      sender_id: A.cUser?.id,
+      sender_id: isUuid(A.cUser?.id) ? A.cUser.id : null,
       content: caption,
       priority,
       photo_url: publicUrl,
-      read_by: A.cUser?.id ? [A.cUser.id] : [],
+      read_by: isUuid(A.cUser?.id) ? [A.cUser.id] : [],
       created_at: nISO(),
     });
     if (error) throw error;
@@ -495,6 +624,107 @@ export async function handleChatPhotoChange(event) {
 
 export function setChatInput(v) {
   A.chatInput = v;
+  if (v && v.trim()) broadcastTyping(true);
+  else broadcastTyping(false);
+}
+
+export function toggleMentionPicker() {
+  A.mentionPickerOpen = !A.mentionPickerOpen;
+  render();
+}
+
+export function insertMention(token) {
+  if (!token) return;
+  const current = A.chatInput || '';
+  const trimmed = current.replace(/\s+$/, '');
+  const sep = trimmed.length ? ' ' : '';
+  A.chatInput = `${trimmed}${sep}${token} `;
+  A.mentionPickerOpen = false;
+  render();
+  setTimeout(() => {
+    const input = document.getElementById('chat-input');
+    if (input) {
+      input.focus();
+      if (typeof input.setSelectionRange === 'function') {
+        input.setSelectionRange(A.chatInput.length, A.chatInput.length);
+      }
+    }
+  }, 20);
+}
+
+function broadcastTyping(isTyping) {
+  const sb = getSupabase();
+  if (!sb || !_presenceChannel || isTestMode() || !A.cUser) return;
+
+  const now = Date.now();
+  if (isTyping && now - _typingThrottleAt < 800) {
+    clearTimeout(_typingClearTimer);
+    _typingClearTimer = setTimeout(() => broadcastTyping(false), 4000);
+    return;
+  }
+  if (isTyping) _typingThrottleAt = now;
+
+  try {
+    _presenceChannel.track({
+      userId: A.cUser.id,
+      name: A.cUser.name,
+      role: A.cUser.role,
+      typing: !!isTyping,
+      at: nISO(),
+    });
+  } catch (error) {
+    console.warn('[BOB] presence track failed:', error);
+  }
+  if (isTyping) {
+    clearTimeout(_typingClearTimer);
+    _typingClearTimer = setTimeout(() => broadcastTyping(false), 4000);
+  } else {
+    _typingThrottleAt = 0;
+  }
+}
+
+async function ensurePresenceChannel(convId) {
+  const sb = getSupabase();
+  if (!sb || !convId || isTestMode()) return;
+  if (_presenceChannel && _presenceConvId === convId) return;
+
+  _presenceConvId = convId;
+  const oldChannel = _presenceChannel;
+  _presenceChannel = null;
+  if (oldChannel) {
+    try { await sb.removeChannel(oldChannel); } catch { /* ignore */ }
+  }
+  // Guard against another selectConv racing us while we awaited above.
+  if (_presenceConvId !== convId) return;
+
+  _presenceChannel = sb.channel(`chat-presence-${convId}`, {
+    config: { presence: { key: A.cUser?.id || `anon-${Math.random().toString(36).slice(2, 8)}` } },
+  });
+
+  _presenceChannel
+    .on('presence', { event: 'sync' }, () => {
+      const state = _presenceChannel.presenceState();
+      const typing = [];
+      Object.keys(state || {}).forEach((key) => {
+        const entries = state[key];
+        entries.forEach((e) => {
+          if (e.typing && e.userId !== A.cUser?.id) {
+            typing.push({ id: e.userId, name: e.name, role: e.role });
+          }
+        });
+      });
+      A.typingUsers = typing;
+      render();
+    })
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        _presenceChannel.track({ userId: A.cUser?.id, name: A.cUser?.name, role: A.cUser?.role, typing: false, at: nISO() });
+      }
+    });
+}
+
+export function typingUsersForActiveConv() {
+  return Array.isArray(A.typingUsers) ? A.typingUsers : [];
 }
 
 export function setChatPriority(v) {
@@ -539,10 +769,15 @@ export async function openOrderChat(orderId, orderLabel) {
 export async function stopChatRealtimeSync() {
   clearTimeout(chatDebounceRef.current);
   chatDebounceRef.current = null;
+  clearTimeout(_typingClearTimer);
+  _typingClearTimer = null;
   await removeChannelSafe(_messagesChannel);
   await removeChannelSafe(_conversationsChannel);
+  await removeChannelSafe(_presenceChannel);
   _messagesChannel = null;
   _conversationsChannel = null;
+  _presenceChannel = null;
+  _presenceConvId = null;
 }
 
 export async function startChatRealtimeSync() {

@@ -3,15 +3,25 @@
    Réécriture complète — layout produit compact
    ============================================================ */
 
-import { A, ORDER_STATUSES } from '../state.js';
-import { aP, oCats, gP, fD, fT, fDl } from '../utils.js';
+import { A, ORDER_STATUSES, ROLE_LABELS } from '../state.js';
+import { aP, oCats, gP, fD, fT, fDl, escHtml } from '../utils.js';
 import { isAdmin } from '../auth.js';
 import { bSum } from './modals.js';
 import { bChat, chatBadge } from './chat.js';
 import { bCalendar, calBadge, calDashboardWidget } from './calendar.js';
 import { bAuditSection } from './audit.js';
+import { bPlanningSection } from './planning.js';
 import { totalUnread } from '../modules/chat.js';
 import { getLowStock, stockLevel } from '../modules/stock.js';
+import { unseenCountForUser } from '../modules/notifications.js';
+
+function receptionBadge() {
+  const sh = A.selShop;
+  if (!sh) return '';
+  const n = A.orders.filter((o) => o.shopId === sh.id && (o.status === 'validated' || o.status === 'delivering')).length;
+  if (n === 0) return '';
+  return `<span style="background:var(--amber);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:10px;margin-left:4px;vertical-align:middle">${n > 9 ? '9+' : n}</span>`;
+}
 
 function runtimePanel({ kind = 'info', title, text, meta = '' }) {
   const tones = {
@@ -124,6 +134,14 @@ function shopHeader() {
           </div>
         </div>
         <div style="display:flex;gap:4px;align-items:center">
+          ${(() => {
+            const n = unseenCountForUser(A.cUser);
+            return `
+              <button onclick="window.__BOB__.toggleNotifs()" style="position:relative;width:30px;height:30px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--txt2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                🔔
+                ${n > 0 ? `<span style="position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;background:var(--red);color:#fff;font-size:10px;font-weight:800;border-radius:8px;display:flex;align-items:center;justify-content:center;line-height:1">${n > 9 ? '9+' : n}</span>` : ''}
+              </button>`;
+          })()}
           ${isAdmin() ? `<button onclick="window.__BOB__.goAdm()" style="width:30px;height:30px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--txt2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">⚙</button>` : ''}
           <button onclick="window.__BOB__.toggleDark()" style="width:30px;height:30px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--txt2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">◑</button>
           <button onclick="window.__BOB__.logout()" style="width:30px;height:30px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--txt2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">↩</button>
@@ -494,12 +512,32 @@ function tabOrders() {
                 ${o.note ? `<div style="margin-top:8px;padding:8px 10px;background:var(--bg3);border-radius:6px;font-size:12px;color:var(--txt2)">💬 ${o.note}</div>` : ''}
                 ${o.comment ? `<div style="margin-top:6px;padding:8px 10px;background:${A.dark?'#1e2d47':'#EFF6FF'};border-radius:6px;font-size:12px;color:var(--blue)">🍳 ${o.comment}</div>` : ''}
 
+                ${o.reservation ? `
+                  <div style="margin-top:10px;padding:10px 12px;background:${A.dark ? '#2D1B00' : '#FFF7ED'};border:1px solid #FED7AA;border-radius:7px;color:${A.dark ? '#FCD34D' : '#92400E'};font-size:12px;line-height:1.5">
+                    <div style="font-family:'Archivo Black',sans-serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">⚠ Réserve émise</div>
+                    <div>Par ${o.reservation.reportedBy} · ${fD(o.reservation.reportedAt)} ${fT(o.reservation.reportedAt)}</div>
+                    ${(o.reservation.items || []).length ? `<div style="margin-top:4px">${o.reservation.items.map(it => { const p = gP(it.id); return `${p?.name || it.id} : ${it.actual}/${it.expected} ${p?.unit || ''}`; }).join(' · ')}</div>` : ''}
+                    ${o.reservation.note ? `<div style="margin-top:4px;font-style:italic">« ${o.reservation.note} »</div>` : ''}
+                    ${(o.reservation.photos || []).length ? `<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${o.reservation.photos.map((url) => `<img src="${escHtml(url)}" alt="Photo réserve" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1.5px solid var(--amber)"/>`).join('')}</div>` : ''}
+                  </div>
+                ` : ''}
+
                 <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
                   ${(o.status === 'validated' || o.status === 'delivering') ? `
                     <button
                       onclick="window.__BOB__.cfSRc('${o.id}')"
-                      style="flex:1;height:40px;background:var(--txt);color:var(--bg2);border:none;border-radius:7px;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer"
+                      style="flex:1;height:40px;background:var(--green);color:#fff;border:none;border-radius:7px;font-family:'Archivo Black',sans-serif;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;letter-spacing:.5px"
                     >Confirmer réception 📦</button>
+                    <button
+                      onclick="window.__BOB__.openReserveDraft('${o.id}')"
+                      style="height:40px;padding:0 14px;background:transparent;color:var(--amber);border:1.5px solid var(--amber);border-radius:7px;font-family:'Archivo Black',sans-serif;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;letter-spacing:.5px"
+                    >⚠ Réserve</button>
+                  ` : ''}
+                  ${(o.status === 'received' && !o.reservation) ? `
+                    <button
+                      onclick="window.__BOB__.openReserveDraft('${o.id}')"
+                      style="height:40px;padding:0 14px;background:transparent;color:var(--amber);border:1.5px solid var(--amber);border-radius:7px;font-family:'Archivo Black',sans-serif;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;letter-spacing:.5px"
+                    >⚠ Signaler réserve</button>
                   ` : ''}
                   <button
                     onclick="window.__BOB__.dupeO('${o.id}')"
@@ -609,7 +647,7 @@ function tabProfile() {
           </div>
           <div>
             <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--txt)">${u.name}</div>
-            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;color:var(--txt3);margin-top:3px">${u.role.toUpperCase()}</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;color:var(--txt3);margin-top:3px">${(ROLE_LABELS[u.role] || u.role).toUpperCase()}</div>
           </div>
         </div>
 
@@ -643,12 +681,13 @@ function tabProfile() {
 
 export function bShop() {
   const tabs = [
-    { id: 'order',   label: 'Commander',  icon: '🛒' },
-    { id: 'orders',  label: 'Commandes',  icon: '📋' },
-    { id: 'stock',   label: 'Mon stock',  icon: '📦' },
-    { id: 'profile', label: 'Profil',     icon: '👤' },
-    { id: 'chat',    label: 'Messages',   icon: '💬' },
-    { id: 'calendar',label: 'Calendrier', icon: '📅' },
+    { id: 'order',    label: 'Commander',  icon: '🛒' },
+    { id: 'orders',   label: 'Commandes',  icon: '📋' },
+    { id: 'stock',    label: 'Mon stock',  icon: '📦' },
+    { id: 'profile',  label: 'Profil',     icon: '👤' },
+    { id: 'chat',     label: 'Messages',   icon: '💬' },
+    { id: 'calendar', label: 'Calendrier', icon: '📅' },
+    { id: 'planning', label: 'Planning',   icon: '📆' },
     ...(isAdmin() ? [{ id: 'audit', label: 'Audit', icon: '🔍' }] : []),
   ];
 
@@ -660,6 +699,7 @@ export function bShop() {
     case 'profile':  content = tabProfile(); break;
     case 'chat':     content = bChat();      break;
     case 'calendar': content = bCalendar(); break;
+    case 'planning': content = bPlanningSection(); break;
     case 'audit':    content = bAuditSection(); break;
     default:         content = tabOrder();
   }
@@ -689,7 +729,7 @@ export function bShop() {
               transition:color .12s,border-color .12s;
               display:flex;align-items:center;gap:5px
             "
-          >${t.icon} ${t.label}${t.id === 'chat' ? chatBadge() : t.id === 'calendar' ? calBadge() : ''}</button>
+          >${t.icon} ${t.label}${t.id === 'chat' ? chatBadge() : t.id === 'calendar' ? calBadge() : t.id === 'orders' ? receptionBadge() : ''}</button>
         `).join('')}
       </div>
 

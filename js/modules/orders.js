@@ -6,6 +6,38 @@
 import { A, sv } from '../state.js';
 import { gId, nISO, dDel, toast, alog, render, isValidDelivery } from '../utils.js';
 import { createOrder as createOrderApi, loadOrdersIntoState, patchOrder, updateStock as updateStockApi, loadStockIntoState } from '../api/supabase.js';
+import { createNotification } from './notifications.js';
+import { uploadPhoto } from '../api/supabase.js';
+
+const RESERVE_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
+
+function compressImageToDataUrl(file, maxDim = 1024, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error || new Error('read fail'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('image load fail'));
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        try {
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } catch (error) {
+          reject(error);
+        }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 function currentTimestamp() {
   return nISO();
@@ -75,15 +107,36 @@ export function cxSum() {
   render();
 }
 
+function resolveShopUuid(selShop) {
+  if (!selShop?.id) return null;
+  const isUuid = typeof selShop.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selShop.id);
+  if (isUuid) return selShop.id;
+  // selShop.id est un slug/texte → on cherche dans A.shops si un des shops a ce slug/name
+  const match = (A.shops || []).find((s) => {
+    const sid = String(s.id || '');
+    const sslug = String(s.slug || '');
+    return sid === selShop.id || sslug === selShop.id || (s.name && s.name === selShop.name);
+  });
+  if (match && typeof match.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(match.id)) {
+    return match.id;
+  }
+  return null;
+}
+
 export async function sbO() {
   const s = A.summary;
   if (!s) return;
 
   const sh = A.selShop;
+  const resolvedShopUuid = resolveShopUuid(sh);
+  if (!resolvedShopUuid) {
+    toast('Boutique non synchronisée. Actualise la page puis réessaie.', 'error');
+    return;
+  }
   const now = currentTimestamp();
   const order = {
     id: gId('CMD'),
-    shopId: sh.id,
+    shopId: resolvedShopUuid,
     shopName: sh.name,
     shopColor: sh.color,
     items: s.items,
@@ -129,7 +182,11 @@ export function dupeO(id) {
 export async function sOS(id, status) {
   const labels = { preparing: 'En préparation 🔧', delivering: 'En livraison 🚚' };
   const ok = await persistOrderPatch(id, { status }, labels[status] || 'Statut mis à jour ✓');
-  if (ok) alog(`Statut ${id}: ${status}`);
+  if (ok) {
+    alog(`Statut ${id}: ${status}`);
+    const order = A.orders.find((o) => o.id === id);
+    notifyTeamBTBStatus(order, status);
+  }
 }
 
 export function sOC(id, v) {
@@ -154,17 +211,47 @@ export async function uOT(id, v) {
   await persistOrderPatch(id, { deliveryTime: v });
 }
 
+function shopLabel(shopId) {
+  return (A.shops || []).find((s) => s.id === shopId)?.name || shopId;
+}
+
+function notifyTeamBTBStatus(order, status, commentMaybe = '') {
+  if (!order) return;
+  const titles = {
+    validated:  'Commande validée',
+    rejected:   'Commande refusée',
+    preparing:  'Commande en préparation',
+    delivering: 'Commande en livraison',
+  };
+  const title = titles[status];
+  if (!title) return;
+  const by = A.cUser?.name || 'Cuisine';
+  const body = `${shopLabel(order.shopId)} · ${order.id}\n${by}${commentMaybe ? `\n${commentMaybe}` : ''}`;
+  createNotification({
+    type: `order-${status}`,
+    role: 'user',
+    title,
+    body,
+    shopId: order.shopId,
+    orderId: order.id,
+  });
+}
+
 export function cfV(id) {
   A.confirm = {
     msg: 'Valider cette commande ?',
     fn: async () => {
-      const comment = A.orders.find((o) => o.id === id)?.comment || '';
+      const order = A.orders.find((o) => o.id === id);
+      const comment = order?.comment || '';
       const ok = await persistOrderPatch(id, {
         status: 'validated',
         validatedBy: A.cUser?.name || null,
         comment,
       }, 'Validée ✓');
-      if (ok) alog(`Validé: ${id}`);
+      if (ok) {
+        alog(`Validé: ${id}`);
+        notifyTeamBTBStatus(order, 'validated', comment);
+      }
     },
   };
   render();
@@ -174,13 +261,17 @@ export function cfR(id) {
   A.confirm = {
     msg: 'Refuser cette commande ?',
     fn: async () => {
-      const comment = A.orders.find((o) => o.id === id)?.comment || '';
+      const order = A.orders.find((o) => o.id === id);
+      const comment = order?.comment || '';
       const ok = await persistOrderPatch(id, {
         status: 'rejected',
         validatedBy: A.cUser?.name || null,
         comment,
       }, 'Refusée ✗');
-      if (ok) alog(`Refusé: ${id}`);
+      if (ok) {
+        alog(`Refusé: ${id}`);
+        notifyTeamBTBStatus(order, 'rejected', comment);
+      }
     },
   };
   render();
@@ -262,6 +353,149 @@ export function cfKRc(id) {
       render();
     },
   };
+  render();
+}
+
+// ── Réserve à la réception (Team BTB → notif Manager) ────────
+export function openReserveDraft(orderId) {
+  const order = A.orders.find((o) => o.id === orderId);
+  if (!order) return;
+  A.reserveDraft = {
+    orderId,
+    note: '',
+    photos: [],
+    items: (order.items || []).map((it) => ({ id: it.id, expected: it.qty, actual: it.qty })),
+  };
+  render();
+}
+
+export function triggerReservePhotoInput() {
+  document.getElementById('reserve-photo-input')?.click();
+}
+
+export async function handleReservePhotoChange(event) {
+  const input = event?.target;
+  const file = input?.files?.[0];
+  if (!file) return;
+  try {
+    if (!A.reserveDraft) return;
+    if (!file.type?.startsWith('image/')) { toast('Fichier non image', 'error'); return; }
+    if (file.size > RESERVE_PHOTO_MAX_BYTES) { toast('Image trop lourde (max 2 Mo)', 'error'); return; }
+
+    let url = null;
+    try {
+      const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+      const path = `reception/${A.reserveDraft.orderId}/${Date.now()}-${gId('P')}.${ext}`;
+      url = await uploadPhoto(file, path, 'reception-photos');
+    } catch (error) {
+      console.warn('[BOB] reserve photo upload failed, compressing to data URL fallback:', error);
+      url = await compressImageToDataUrl(file, 1024, 0.72);
+    }
+    A.reserveDraft.photos = [...(A.reserveDraft.photos || []), url];
+    render();
+  } catch (error) {
+    console.warn('[BOB] handleReservePhotoChange:', error);
+    toast('Ajout photo impossible', 'error');
+  } finally {
+    if (input) input.value = '';
+  }
+}
+
+export function removeReservePhoto(index) {
+  if (!A.reserveDraft) return;
+  A.reserveDraft.photos = (A.reserveDraft.photos || []).filter((_, i) => i !== index);
+  render();
+}
+
+export function setReserveItem(itemId, field, value) {
+  if (!A.reserveDraft) return;
+  const v = Math.max(0, parseInt(value) || 0);
+  A.reserveDraft.items = A.reserveDraft.items.map((i) =>
+    i.id === itemId ? { ...i, [field]: v } : i
+  );
+}
+
+export function setReserveNote(value) {
+  if (!A.reserveDraft) return;
+  A.reserveDraft.note = String(value || '').slice(0, 600);
+}
+
+export function cancelReserveDraft() {
+  A.reserveDraft = null;
+  render();
+}
+
+export async function submitReserve() {
+  const draft = A.reserveDraft;
+  if (!draft?.orderId) return;
+  const order = A.orders.find((o) => o.id === draft.orderId);
+  if (!order) { toast('Commande introuvable', 'error'); return; }
+
+  const deltas = draft.items
+    .map((i) => ({ id: i.id, expected: i.expected, actual: i.actual, delta: i.actual - i.expected }))
+    .filter((i) => i.delta !== 0);
+
+  if (!deltas.length && !draft.note.trim()) {
+    toast('Renseigne un manquant ou une note', 'warn');
+    return;
+  }
+
+  const reservation = {
+    note: draft.note.trim(),
+    items: deltas,
+    photos: Array.isArray(draft.photos) ? draft.photos.slice(0, 6) : [],
+    reportedBy: A.cUser?.name || 'Team BTB',
+    reportedById: A.cUser?.id || null,
+    reportedAt: nISO(),
+  };
+
+  try {
+    await patchOrder(draft.orderId, {
+      status: 'received',
+      reservation,
+      updatedAt: currentTimestamp(),
+      modifiedBy: A.cUser?.name || null,
+    });
+  } catch (error) {
+    console.warn('[BOB] reserve patch failed (fallback local):', error);
+  }
+
+  const ns = JSON.parse(JSON.stringify(A.stock));
+  if (!ns[order.shopId]) ns[order.shopId] = {};
+  for (const item of draft.items) {
+    const current = ns[order.shopId][item.id] || { qty: 0, alert: 10 };
+    ns[order.shopId][item.id] = { qty: current.qty + (item.actual || 0), alert: current.alert ?? 10 };
+    try {
+      await updateStockApi(order.shopId, item.id, 'qty', ns[order.shopId][item.id].qty);
+    } catch (e) {
+      console.warn('[BOB] stock update failed (fallback local):', e);
+    }
+  }
+  A.stock = ns;
+  sv('st', A.stock);
+
+  A.orders = A.orders.map((o) =>
+    o.id === draft.orderId ? { ...o, status: 'received', reservation } : o
+  );
+  sv('or', A.orders);
+
+  const shopName = A.shops?.find((s) => s.id === order.shopId)?.name || order.shopId;
+  const missingSummary = deltas.length
+    ? deltas.map((d) => `${d.id} ${d.delta > 0 ? '+' : ''}${d.delta}`).join(', ')
+    : '(note uniquement)';
+
+  createNotification({
+    type: 'reserve',
+    role: 'admin',
+    title: `Réserve à la réception · ${shopName}`,
+    body: `${reservation.reportedBy} · ${order.id}\n${missingSummary}${reservation.note ? `\n${reservation.note}` : ''}`,
+    shopId: order.shopId,
+    orderId: order.id,
+  });
+
+  alog(`Réserve ${order.id} par ${reservation.reportedBy}`);
+  A.reserveDraft = null;
+  toast('Réserve enregistrée · Manager notifié', 'warn');
   render();
 }
 

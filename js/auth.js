@@ -1,9 +1,9 @@
 /* ============================================================
    BOBtheBAGEL - js/auth.js
-   Acces test direct + session Supabase existante
+   Selection de profil (Supabase Auth sera branche a la fin des tests)
    ============================================================ */
 
-import { A, INIT_USERS, sv, resetOrdersRuntime, resetStockRuntime, resetChatRuntime } from './state.js';
+import { A, INIT_USERS, ROLE_LABELS, sv, resetOrdersRuntime, resetStockRuntime, resetChatRuntime } from './state.js';
 import { alog, toast, render, nISO } from './utils.js';
 import {
   getSupabase,
@@ -12,8 +12,14 @@ import {
   loadOrdersIntoState,
   loadStockIntoState,
   loadShopsIntoState,
+  loadPlanningIntoState,
+  loadNotificationsIntoState,
+  loadCalendarIntoState,
+  loadProfilesIntoState,
   startRealtimeSync,
   stopRealtimeSync,
+  startExtraRealtime,
+  stopExtraRealtime,
 } from './api/supabase.js';
 import {
   loadChatIntoState,
@@ -24,7 +30,7 @@ import { loadAuditsIntoState } from './modules/audit.js';
 
 function buildTestUser(role) {
   const source = A.users.find((user) => user.role === role) || INIT_USERS.find((user) => user.role === role);
-  const fallbackName = role === 'admin' ? 'Admin' : 'User';
+  const fallbackName = ROLE_LABELS[role] || 'User';
 
   return {
     id: source?.id || `test-${role}`,
@@ -57,18 +63,29 @@ function openDefaultView(_role) {
 
 async function startAuthenticatedApp() {
   await loadShopsIntoState();
+  await loadProfilesIntoState();
   await loadOrdersIntoState();
   await loadStockIntoState();
   await loadChatIntoState();
   await loadAuditsIntoState();
+  await loadPlanningIntoState();
+  await loadNotificationsIntoState();
+  await loadCalendarIntoState();
   await startRealtimeSync();
   await startChatRealtimeSync();
+  await startExtraRealtime({
+    planning: async () => { await loadPlanningIntoState(); render(); },
+    notifications: async () => { await loadNotificationsIntoState(); render(); },
+    events: async () => { await loadCalendarIntoState(); render(); },
+    audits: async () => { await loadAuditsIntoState(); render(); },
+  });
 }
 
 async function clearRemoteSession() {
   try {
     await stopChatRealtimeSync();
     await stopRealtimeSync();
+    await stopExtraRealtime();
     await signOut();
   } catch (error) {
     console.warn('[BOB] clearRemoteSession:', error);
@@ -87,7 +104,7 @@ function resetTransientState() {
   resetChatRuntime();
 }
 
-async function enterTestProfile(role) {
+async function enterProfile(role) {
   const safeRole = role === 'admin' ? 'admin' : 'user';
   const user = buildTestUser(safeRole);
 
@@ -97,8 +114,8 @@ async function enterTestProfile(role) {
   A.lLocked = false;
   A.cUser = user;
   resetTransientState();
-  logConnection(`${user.name} (test)`);
-  alog(`Acces test: ${user.name}`);
+  logConnection(user.name);
+  alog(`Acces: ${user.name}`);
   openDefaultView(safeRole);
   await startAuthenticatedApp();
   render();
@@ -106,7 +123,7 @@ async function enterTestProfile(role) {
 
 export async function dLog(role = 'user') {
   await clearRemoteSession();
-  await enterTestProfile(role);
+  await enterProfile(role);
 }
 
 export async function logout() {
@@ -140,7 +157,8 @@ export async function restoreSession() {
 
     if (A.testProfile) {
       A.cUser = buildTestUser(A.testProfile);
-      openDefaultView(A.testProfile);
+      A.selShop = null;
+      A.view = 'select';
       await startAuthenticatedApp();
       return true;
     }
@@ -164,8 +182,8 @@ export function canAccessShop(_shopId) {
 }
 
 export function canAccessKitchen() {
-  if (!A.cUser) return false;
-  return isAdmin() || isKitchen();
+  // Team BTB peut aussi travailler en cuisine centrale : tout profil connecte y accede.
+  return !!A.cUser;
 }
 
 export function changePassword(_userId, _newPassword) {
