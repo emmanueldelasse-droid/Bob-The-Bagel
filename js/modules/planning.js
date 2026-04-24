@@ -195,3 +195,58 @@ export function weekRange(refDateStr) {
   }
   return days;
 }
+
+function shiftIsoDate(iso, deltaDays) {
+  const d = new Date(iso);
+  d.setDate(d.getDate() + deltaDays);
+  return d.toISOString().split('T')[0];
+}
+
+export async function duplicateWeekToNext() {
+  const days = weekRange(A.planRefDate);
+  const from = days[0];
+  const to = days[6];
+  const isShopCtx = A.planContext === 'shop';
+  const shopFilter = isShopCtx ? (A.selShop?.id || A.planShop) : A.planShop;
+
+  const src = (A.planning || []).filter((s) => {
+    if (s.date < from || s.date > to) return false;
+    if (shopFilter && s.shopId !== shopFilter) return false;
+    return true;
+  });
+
+  if (!src.length) {
+    toast('Aucun shift à copier cette semaine', 'warn');
+    return;
+  }
+
+  A.confirm = {
+    msg: `Copier ${src.length} shift${src.length > 1 ? 's' : ''} sur la semaine suivante ?`,
+    fn: async () => {
+      const clones = src.map((s) => ({
+        ...s,
+        id: gId('PL'),
+        date: shiftIsoDate(s.date, 7),
+        updatedAt: nISO(),
+      }));
+      const next = [...(A.planning || []), ...clones];
+      A.planning = next;
+      persist();
+      A.planRefDate = shiftIsoDate(A.planRefDate, 7);
+      render();
+
+      let remoteOk = 0;
+      for (const clone of clones) {
+        try {
+          await upsertPlanningShift(clone);
+          remoteOk += 1;
+        } catch (error) {
+          console.warn('[BOB] duplicateWeek remote failed for one shift:', error);
+        }
+      }
+      toast(`Semaine copiée · ${clones.length} shifts (${remoteOk} remote OK)`);
+      alog(`Planning duplique semaine: ${clones.length} shifts`);
+    },
+  };
+  render();
+}

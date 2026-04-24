@@ -163,6 +163,7 @@ export const A = {
   chatConvId: 'general',
   chatInput:  '',
   chatPriority: 'normal',
+  typingUsers: [],
 
   auditTab:       'list',
   auditFilter:    'all',

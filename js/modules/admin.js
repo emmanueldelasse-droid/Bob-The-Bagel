@@ -104,9 +104,13 @@ export function sNShop(field, val) { A.nShop[field] = val; }
 
 function slugify(s) {
   return String(s || '')
-    .toLowerCase()
-    .normalize('NFD')
+    .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/æ/g, 'ae')
+    .replace(/ø/g, 'o')
+    .replace(/œ/g, 'oe')
+    .replace(/ß/g, 'ss')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 32) || `sh-${Date.now().toString(36)}`;
@@ -152,7 +156,9 @@ export function dShop(id) {
 }
 
 export async function setShopColor(id, color) {
-  A.shops = (A.shops || []).map((s) => (s.id === id ? { ...s, color } : s));
+  const target = (A.shops || []).find((s) => s.id === id);
+  if (!target) return;
+  A.shops = A.shops.map((s) => (s.id === id ? { ...s, color } : s));
   sv('sh', A.shops);
   try {
     const shop = A.shops.find((s) => s.id === id);

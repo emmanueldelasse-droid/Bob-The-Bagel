@@ -81,6 +81,7 @@ import {
   setPlanTab, setPlanShopFilter, setPlanRefDate, shiftPlanRef, planToday,
   openPlanDraft, editPlanShift, cancelPlanDraft,
   setPlanDraft, savePlanDraft, deletePlanShift,
+  duplicateWeekToNext,
 } from './js/modules/planning.js';
 
 import { getSupabase } from './js/api/supabase.js';
@@ -140,7 +141,7 @@ window.__BOB__ = {
 
   setPlanTab, setPlanShopFilter, setPlanRefDate, shiftPlanRef, planToday,
   openPlanDraft, editPlanShift, cancelPlanDraft,
-  setPlanDraft, savePlanDraft, deletePlanShift,
+  setPlanDraft, savePlanDraft, deletePlanShift, duplicateWeekToNext,
 };
 
 setBApp(() => bApp());

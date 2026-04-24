@@ -6,11 +6,15 @@
 import { A, sv, setRuntimeFlag } from '../state.js';
 import { nISO, render, toast, gId } from '../utils.js';
 import { getSupabase, uploadPhoto } from '../api/supabase.js';
+import { createNotification } from './notifications.js';
 
 const CHAT_PHOTO_MAX_BYTES = 2 * 1024 * 1024; // 2 Mo
 
 let _messagesChannel = null;
 let _conversationsChannel = null;
+let _presenceChannel = null;
+let _presenceConvId = null;
+let _typingClearTimer = null;
 const chatDebounceRef = { current: null };
 
 function isTestMode() {
@@ -44,6 +48,55 @@ function debounce(fn, wait = 250) {
 
 function persistChatSeen() {
   sv('chat_seen', A.chatSeen);
+}
+
+const MENTION_REGEX = /@([\p{L}0-9][\p{L}0-9 _-]{0,23})/gu;
+
+export function parseMentions(text) {
+  if (!text) return [];
+  const normalize = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
+  const found = new Set();
+  const hits = [];
+  let match;
+  MENTION_REGEX.lastIndex = 0;
+  while ((match = MENTION_REGEX.exec(text)) !== null) {
+    const raw = match[1].trim();
+    if (!raw) continue;
+    const nRaw = normalize(raw);
+    let user = null;
+    if (nRaw === 'manager' || nRaw === 'managers') {
+      user = { id: '@manager', name: 'Manager', role: 'admin' };
+    } else if (nRaw === 'team' || nRaw === 'team-btb' || nRaw === 'teambtb') {
+      user = { id: '@user', name: 'Team BTB', role: 'user' };
+    } else {
+      user = A.users.find((u) => normalize(u.name) === nRaw || normalize(u.name).startsWith(nRaw));
+    }
+    if (user && !found.has(user.id)) {
+      found.add(user.id);
+      hits.push({ id: user.id, name: user.name, role: user.role, raw: match[0] });
+    }
+  }
+  return hits;
+}
+
+function notifyMentions(message, mentions, convLabel) {
+  if (!mentions.length) return;
+  const sender = message.senderName || '?';
+  const rolesTargeted = new Set();
+  mentions.forEach((m) => {
+    const body = `${sender} · ${convLabel || 'Chat'}\n${message.content}`.slice(0, 400);
+    if (m.id === '@manager') {
+      if (rolesTargeted.has('admin')) return;
+      rolesTargeted.add('admin');
+      createNotification({ type: 'chat-mention', role: 'admin', title: `Mention @Manager`, body });
+    } else if (m.id === '@user') {
+      if (rolesTargeted.has('user')) return;
+      rolesTargeted.add('user');
+      createNotification({ type: 'chat-mention', role: 'user', title: `Mention @Team BTB`, body });
+    } else {
+      createNotification({ type: 'chat-mention', role: m.role || 'user', title: `@${m.name} mentionné(e)`, body });
+    }
+  });
 }
 
 function orderForConversation(orderId) {
@@ -286,7 +339,9 @@ export async function loadChatIntoState() {
 // ── Sélection conversation ─────────────────────────────────
 export function selectConv(convId) {
   A.chatConvId = convId;
+  A.typingUsers = [];
   markConversationSeen(convId);
+  ensurePresenceChannel(convId);
   render();
 
   setTimeout(() => {
@@ -379,8 +434,10 @@ export async function sendMessage() {
     return;
   }
 
+  const mentions = parseMentions(text);
+
   if (isTestMode()) {
-    A.messages = [...A.messages, {
+    const msg = {
       id: `local-msg-${gId()}`,
       convId,
       senderId: A.cUser?.id,
@@ -389,12 +446,16 @@ export async function sendMessage() {
       content: text,
       priority: A.chatPriority || 'normal',
       photoUrl: null,
+      mentions,
       readBy: A.cUser?.id ? [A.cUser.id] : [],
       createdAt: nISO(),
-    }];
+    };
+    A.messages = [...A.messages, msg];
     A.chatInput = '';
     A.chatPriority = 'normal';
     markConversationSeen(convId);
+    const conv = A.conversations.find((c) => c.id === convId);
+    notifyMentions(msg, mentions, conv?.label);
     render();
     setTimeout(() => {
       const feed = document.getElementById('chat-feed');
@@ -415,6 +476,7 @@ export async function sendMessage() {
       sender_id: A.cUser?.id,
       content: text,
       priority: A.chatPriority || 'normal',
+      mentions: mentions.length ? mentions : null,
       read_by: A.cUser?.id ? [A.cUser.id] : [],
       created_at: nISO(),
     });
@@ -425,6 +487,11 @@ export async function sendMessage() {
     A.chatPriority = 'normal';
     await loadChatIntoState();
     markConversationSeen(convId);
+    const conv = A.conversations.find((c) => c.id === convId);
+    notifyMentions({
+      senderName: A.cUser?.name || '?',
+      content: text,
+    }, mentions, conv?.label);
     render();
 
     setTimeout(() => {
@@ -551,6 +618,69 @@ export async function handleChatPhotoChange(event) {
 
 export function setChatInput(v) {
   A.chatInput = v;
+  if (v && v.trim()) broadcastTyping(true);
+  else broadcastTyping(false);
+}
+
+function broadcastTyping(isTyping) {
+  const sb = getSupabase();
+  if (!sb || !_presenceChannel || isTestMode() || !A.cUser) return;
+  try {
+    _presenceChannel.track({
+      userId: A.cUser.id,
+      name: A.cUser.name,
+      role: A.cUser.role,
+      typing: !!isTyping,
+      at: nISO(),
+    });
+  } catch (error) {
+    console.warn('[BOB] presence track failed:', error);
+  }
+  if (isTyping) {
+    clearTimeout(_typingClearTimer);
+    _typingClearTimer = setTimeout(() => broadcastTyping(false), 4000);
+  }
+}
+
+async function ensurePresenceChannel(convId) {
+  const sb = getSupabase();
+  if (!sb || !convId || isTestMode()) return;
+  if (_presenceChannel && _presenceConvId === convId) return;
+
+  if (_presenceChannel) {
+    try { await sb.removeChannel(_presenceChannel); } catch { /* ignore */ }
+    _presenceChannel = null;
+  }
+  _presenceConvId = convId;
+
+  _presenceChannel = sb.channel(`chat-presence-${convId}`, {
+    config: { presence: { key: A.cUser?.id || `anon-${Math.random().toString(36).slice(2, 8)}` } },
+  });
+
+  _presenceChannel
+    .on('presence', { event: 'sync' }, () => {
+      const state = _presenceChannel.presenceState();
+      const typing = [];
+      Object.keys(state || {}).forEach((key) => {
+        const entries = state[key];
+        entries.forEach((e) => {
+          if (e.typing && e.userId !== A.cUser?.id) {
+            typing.push({ id: e.userId, name: e.name, role: e.role });
+          }
+        });
+      });
+      A.typingUsers = typing;
+      render();
+    })
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        _presenceChannel.track({ userId: A.cUser?.id, name: A.cUser?.name, role: A.cUser?.role, typing: false, at: nISO() });
+      }
+    });
+}
+
+export function typingUsersForActiveConv() {
+  return Array.isArray(A.typingUsers) ? A.typingUsers : [];
 }
 
 export function setChatPriority(v) {
@@ -595,10 +725,15 @@ export async function openOrderChat(orderId, orderLabel) {
 export async function stopChatRealtimeSync() {
   clearTimeout(chatDebounceRef.current);
   chatDebounceRef.current = null;
+  clearTimeout(_typingClearTimer);
+  _typingClearTimer = null;
   await removeChannelSafe(_messagesChannel);
   await removeChannelSafe(_conversationsChannel);
+  await removeChannelSafe(_presenceChannel);
   _messagesChannel = null;
   _conversationsChannel = null;
+  _presenceChannel = null;
+  _presenceConvId = null;
 }
 
 export async function startChatRealtimeSync() {

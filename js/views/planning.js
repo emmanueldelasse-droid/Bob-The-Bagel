@@ -54,8 +54,10 @@ function controls() {
       ` : ''}
 
       ${isAdmin() ? `
-        <button class="btn btn-primary btn-sm" style="margin-left:auto"
-          onclick="window.__BOB__.openPlanDraft('${activeShopId || ''}')">+ Nouveau shift</button>
+        <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="window.__BOB__.duplicateWeekToNext()">↻ Copier semaine</button>
+          <button class="btn btn-primary btn-sm" onclick="window.__BOB__.openPlanDraft('${activeShopId || ''}')">+ Nouveau shift</button>
+        </div>
       ` : ''}
     </div>`;
 }

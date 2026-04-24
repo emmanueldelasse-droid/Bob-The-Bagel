@@ -5,13 +5,29 @@
 
 import { A } from '../state.js';
 import { escHtml, fD, fT, safeImageUrl, textToHtml } from '../utils.js';
+import { parseMentions } from '../modules/chat.js';
 import {
   messagesForConv,
   unreadForConv,
   totalUnread,
   readersForMessage,
   expectedReadersForConv,
+  typingUsersForActiveConv,
 } from '../modules/chat.js';
+
+function renderMessageBody(content) {
+  if (!content) return '';
+  const raw = String(content);
+  const mentions = parseMentions(raw);
+  let html = escHtml(raw).replace(/\r?\n/g, '<br>');
+  mentions.forEach((m) => {
+    const needle = escHtml(m.raw);
+    const color = m.role === 'admin' ? '#E8294B' : m.role === 'kitchen' ? '#D97706' : '#0E4B30';
+    const pill = `<span style="display:inline;padding:1px 6px;border-radius:8px;background:${color}33;color:${color};font-weight:800;vertical-align:baseline">${escHtml(m.raw)}</span>`;
+    html = html.split(needle).join(pill);
+  });
+  return html;
+}
 
 function roleColor(role) {
   if (role === 'admin') return '#E8294B';
@@ -147,7 +163,7 @@ function msgBubble(message) {
         ${isUrgent ? `
           <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:${isMe ? 'rgba(255,255,255,.6)' : '#E8294B'};margin-bottom:4px;display:flex;align-items:center;gap:4px">🚨 URGENT</div>
         ` : ''}
-        <div style="font-size:13px;line-height:1.5">${textToHtml(message.content)}</div>
+        <div style="font-size:13px;line-height:1.5">${renderMessageBody(message.content)}</div>
         ${photoUrl ? `
           <div style="margin-top:8px">
             <img src="${escHtml(photoUrl)}" alt="Photo message" style="max-width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.12);display:block" />
@@ -196,12 +212,29 @@ function convList() {
   }).join('');
 }
 
+function typingHint() {
+  const users = typingUsersForActiveConv();
+  if (!users.length) return '';
+  const names = users.map((u) => u.name).slice(0, 3).join(', ');
+  const more = users.length > 3 ? `, +${users.length - 3}` : '';
+  return `
+    <div style="padding:6px 14px;background:var(--bg2);border-top:1px solid var(--border);font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:8px">
+      <span style="display:inline-flex;gap:3px;flex-shrink:0">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--txt2);animation:typingDot 1s infinite"></span>
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--txt2);animation:typingDot 1s infinite .2s"></span>
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--txt2);animation:typingDot 1s infinite .4s"></span>
+      </span>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${escHtml(names)}${more} ${users.length > 1 ? 'écrivent' : 'écrit'}…</span>
+    </div>`;
+}
+
 function inputZone(activeConv) {
   const isUrgent = A.chatPriority === 'urgent';
   const disabled = !activeConv;
 
   return `
-    <div style="padding:10px 14px;background:var(--bg2);border-top:1px solid var(--border)">
+    ${typingHint()}
+    <div style="padding:10px 14px;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:var(--bg2);border-top:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <button
           onclick="${disabled ? '' : `window.__BOB__.setChatPriority(${isUrgent ? "'normal'" : "'urgent'"})` }"
@@ -238,7 +271,7 @@ function inputZone(activeConv) {
           onmouseout="this.style.opacity='${disabled ? '.5' : '1'}'"
         >↑</button>
       </div>
-      <div style="font-size:10px;color:var(--txt3);margin-top:5px;padding:0 2px">Entrée pour envoyer · 📎 pour joindre une photo · Shift+Entrée pour sauter une ligne</div>
+      <div class="chat-hint-desktop" style="font-size:10px;color:var(--txt3);margin-top:5px;padding:0 2px">Entrée pour envoyer · 📎 photo · Shift+Entrée saut de ligne</div>
     </div>`;
 }
 

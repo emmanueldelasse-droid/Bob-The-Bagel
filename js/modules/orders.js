@@ -11,6 +11,34 @@ import { uploadPhoto } from '../api/supabase.js';
 
 const RESERVE_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
 
+function compressImageToDataUrl(file, maxDim = 1024, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error || new Error('read fail'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('image load fail'));
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        try {
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } catch (error) {
+          reject(error);
+        }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function currentTimestamp() {
   return nISO();
 }
@@ -339,13 +367,8 @@ export async function handleReservePhotoChange(event) {
       const path = `reception/${A.reserveDraft.orderId}/${Date.now()}-${gId('P')}.${ext}`;
       url = await uploadPhoto(file, path, 'reception-photos');
     } catch (error) {
-      console.warn('[BOB] reserve photo upload failed, kept as data URL:', error);
-      url = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(reader.error || new Error('read fail'));
-        reader.readAsDataURL(file);
-      });
+      console.warn('[BOB] reserve photo upload failed, compressing to data URL fallback:', error);
+      url = await compressImageToDataUrl(file, 1024, 0.72);
     }
     A.reserveDraft.photos = [...(A.reserveDraft.photos || []), url];
     render();

@@ -12,7 +12,22 @@ alter table if exists public.orders
   add column if not exists reservation jsonb;
 
 comment on column public.orders.reservation is
-  'Reserve saisie a la reception: { note, items[], reportedBy, reportedById, reportedAt }';
+  'Reserve saisie a la reception: { note, items[], photos[], reportedBy, reportedById, reportedAt }';
+
+-- ============ PROFILES : colonnes attendues par le front ============
+alter table if exists public.profiles
+  add column if not exists role       text default 'user',
+  add column if not exists name       text,
+  add column if not exists photo_url  text,
+  add column if not exists shop_ids   jsonb default '[]'::jsonb;
+
+comment on column public.profiles.role is 'admin = Manager, user = Team BTB, kitchen = Cuisine';
+comment on column public.profiles.shop_ids is 'Liste des shops.id autorises pour ce profil (vide = aucun pour users / tous pour admin)';
+
+-- ============ SHOPS : colonnes attendues par le front ============
+alter table if exists public.shops
+  add column if not exists color      text default '#0E4B30',
+  add column if not exists is_active  boolean default true;
 
 -- ============ PLANNING ==========================================
 create table if not exists public.planning (
