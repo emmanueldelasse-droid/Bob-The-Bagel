@@ -302,13 +302,16 @@ function monthView() {
           const color = d.inMonth ? 'var(--txt)' : 'var(--txt3)';
           const chips = list.slice(0, 3).map((s) => {
             const shopColor = A.shops?.find((x) => x.id === s.shopId)?.color || 'var(--green)';
-            return `<div style="font-size:10px;padding:2px 4px;border-radius:4px;background:${shopColor}22;color:${shopColor};font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer"
+            return `<div style="display:flex;flex-direction:column;gap:0;padding:3px 5px;border-radius:4px;background:${shopColor}22;color:${shopColor};line-height:1.15;cursor:pointer;overflow:hidden"
               onclick="window.__BOB__.editPlanShift('${s.id}')"
-              title="${s.staffName} ${s.start}-${s.end}">${s.start} ${s.staffName}</div>`;
+              title="${s.staffName} · ${s.start}-${s.end}${s.note ? ' · ' + s.note : ''}">
+              <span style="font-size:10px;font-weight:800;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.start}-${s.end}</span>
+              <span style="font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.9">${s.staffName}</span>
+            </div>`;
           }).join('');
           const more = list.length > 3 ? `<div style="font-size:10px;color:var(--txt3);text-align:center">+${list.length - 3}</div>` : '';
           return `
-            <div style="min-height:74px;border:1px solid ${border};border-radius:6px;background:${bg};padding:4px;display:flex;flex-direction:column;gap:2px">
+            <div style="min-height:96px;border:1px solid ${border};border-radius:6px;background:${bg};padding:4px;display:flex;flex-direction:column;gap:3px">
               <div style="display:flex;align-items:center;justify-content:space-between">
                 <span style="font-size:11px;font-weight:${isToday ? '800' : '600'};color:${color}">${d.day}</span>
                 ${d.inMonth ? `<button class="btn btn-ghost" style="height:18px;padding:0 4px;min-width:18px;font-size:11px;border:none" onclick="window.__BOB__.setPlanRefDate('${d.iso}');window.__BOB__.setPlanTab('week')" title="Voir cette semaine">→</button>` : ''}
