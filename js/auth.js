@@ -15,6 +15,7 @@ import {
   loadPlanningIntoState,
   loadNotificationsIntoState,
   loadCalendarIntoState,
+  loadProfilesIntoState,
   startRealtimeSync,
   stopRealtimeSync,
   startExtraRealtime,
@@ -62,6 +63,7 @@ function openDefaultView(_role) {
 
 async function startAuthenticatedApp() {
   await loadShopsIntoState();
+  await loadProfilesIntoState();
   await loadOrdersIntoState();
   await loadStockIntoState();
   await loadChatIntoState();

@@ -127,6 +127,21 @@ export function bReserve() {
             oninput="window.__BOB__.setReserveNote(this.value)">${escHtml(d.note || '')}</textarea>
         </div>
 
+        <div style="margin-top:14px">
+          <div class="label" style="margin-bottom:6px">Photos (optionnel)</div>
+          <input type="file" id="reserve-photo-input" accept="image/*" capture="environment" style="display:none" onchange="window.__BOB__.handleReservePhotoChange(event)"/>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+            ${(d.photos || []).map((url, i) => `
+              <div style="position:relative">
+                <img src="${escHtml(url)}" style="width:76px;height:76px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"/>
+                <button aria-label="Supprimer photo" onclick="window.__BOB__.removeReservePhoto(${i})" style="position:absolute;top:-10px;right:-10px;width:32px;height:32px;border-radius:50%;background:var(--red);color:#fff;border:2px solid var(--bg2);font-size:14px;cursor:pointer;line-height:1;z-index:2;box-shadow:var(--sh)">✕</button>
+              </div>`).join('')}
+            ${(d.photos || []).length < 6 ? `
+              <button aria-label="Ajouter une photo" onclick="window.__BOB__.triggerReservePhotoInput()" style="width:76px;height:76px;border-radius:8px;border:1.5px dashed var(--border);background:transparent;color:var(--txt3);font-size:22px;cursor:pointer">+📷</button>
+            ` : ''}
+          </div>
+        </div>
+
         <div style="display:flex;gap:8px;margin-top:18px">
           <button class="btn btn-primary btn-lg" style="flex:2;background:var(--amber);border-color:var(--amber)" onclick="window.__BOB__.submitReserve()">
             Envoyer la réserve ⚠

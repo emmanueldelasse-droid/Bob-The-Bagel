@@ -7,6 +7,9 @@ import { A, sv } from '../state.js';
 import { gId, nISO, dDel, toast, alog, render, isValidDelivery } from '../utils.js';
 import { createOrder as createOrderApi, loadOrdersIntoState, patchOrder, updateStock as updateStockApi, loadStockIntoState } from '../api/supabase.js';
 import { createNotification } from './notifications.js';
+import { uploadPhoto } from '../api/supabase.js';
+
+const RESERVE_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
 
 function currentTimestamp() {
   return nISO();
@@ -130,7 +133,11 @@ export function dupeO(id) {
 export async function sOS(id, status) {
   const labels = { preparing: 'En préparation 🔧', delivering: 'En livraison 🚚' };
   const ok = await persistOrderPatch(id, { status }, labels[status] || 'Statut mis à jour ✓');
-  if (ok) alog(`Statut ${id}: ${status}`);
+  if (ok) {
+    alog(`Statut ${id}: ${status}`);
+    const order = A.orders.find((o) => o.id === id);
+    notifyTeamBTBStatus(order, status);
+  }
 }
 
 export function sOC(id, v) {
@@ -155,17 +162,47 @@ export async function uOT(id, v) {
   await persistOrderPatch(id, { deliveryTime: v });
 }
 
+function shopLabel(shopId) {
+  return (A.shops || []).find((s) => s.id === shopId)?.name || shopId;
+}
+
+function notifyTeamBTBStatus(order, status, commentMaybe = '') {
+  if (!order) return;
+  const titles = {
+    validated:  'Commande validée',
+    rejected:   'Commande refusée',
+    preparing:  'Commande en préparation',
+    delivering: 'Commande en livraison',
+  };
+  const title = titles[status];
+  if (!title) return;
+  const by = A.cUser?.name || 'Cuisine';
+  const body = `${shopLabel(order.shopId)} · ${order.id}\n${by}${commentMaybe ? `\n${commentMaybe}` : ''}`;
+  createNotification({
+    type: `order-${status}`,
+    role: 'user',
+    title,
+    body,
+    shopId: order.shopId,
+    orderId: order.id,
+  });
+}
+
 export function cfV(id) {
   A.confirm = {
     msg: 'Valider cette commande ?',
     fn: async () => {
-      const comment = A.orders.find((o) => o.id === id)?.comment || '';
+      const order = A.orders.find((o) => o.id === id);
+      const comment = order?.comment || '';
       const ok = await persistOrderPatch(id, {
         status: 'validated',
         validatedBy: A.cUser?.name || null,
         comment,
       }, 'Validée ✓');
-      if (ok) alog(`Validé: ${id}`);
+      if (ok) {
+        alog(`Validé: ${id}`);
+        notifyTeamBTBStatus(order, 'validated', comment);
+      }
     },
   };
   render();
@@ -175,13 +212,17 @@ export function cfR(id) {
   A.confirm = {
     msg: 'Refuser cette commande ?',
     fn: async () => {
-      const comment = A.orders.find((o) => o.id === id)?.comment || '';
+      const order = A.orders.find((o) => o.id === id);
+      const comment = order?.comment || '';
       const ok = await persistOrderPatch(id, {
         status: 'rejected',
         validatedBy: A.cUser?.name || null,
         comment,
       }, 'Refusée ✗');
-      if (ok) alog(`Refusé: ${id}`);
+      if (ok) {
+        alog(`Refusé: ${id}`);
+        notifyTeamBTBStatus(order, 'rejected', comment);
+      }
     },
   };
   render();
@@ -273,8 +314,52 @@ export function openReserveDraft(orderId) {
   A.reserveDraft = {
     orderId,
     note: '',
+    photos: [],
     items: (order.items || []).map((it) => ({ id: it.id, expected: it.qty, actual: it.qty })),
   };
+  render();
+}
+
+export function triggerReservePhotoInput() {
+  document.getElementById('reserve-photo-input')?.click();
+}
+
+export async function handleReservePhotoChange(event) {
+  const input = event?.target;
+  const file = input?.files?.[0];
+  if (!file) return;
+  try {
+    if (!A.reserveDraft) return;
+    if (!file.type?.startsWith('image/')) { toast('Fichier non image', 'error'); return; }
+    if (file.size > RESERVE_PHOTO_MAX_BYTES) { toast('Image trop lourde (max 2 Mo)', 'error'); return; }
+
+    let url = null;
+    try {
+      const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+      const path = `reception/${A.reserveDraft.orderId}/${Date.now()}-${gId('P')}.${ext}`;
+      url = await uploadPhoto(file, path, 'reception-photos');
+    } catch (error) {
+      console.warn('[BOB] reserve photo upload failed, kept as data URL:', error);
+      url = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('read fail'));
+        reader.readAsDataURL(file);
+      });
+    }
+    A.reserveDraft.photos = [...(A.reserveDraft.photos || []), url];
+    render();
+  } catch (error) {
+    console.warn('[BOB] handleReservePhotoChange:', error);
+    toast('Ajout photo impossible', 'error');
+  } finally {
+    if (input) input.value = '';
+  }
+}
+
+export function removeReservePhoto(index) {
+  if (!A.reserveDraft) return;
+  A.reserveDraft.photos = (A.reserveDraft.photos || []).filter((_, i) => i !== index);
   render();
 }
 
@@ -314,6 +399,7 @@ export async function submitReserve() {
   const reservation = {
     note: draft.note.trim(),
     items: deltas,
+    photos: Array.isArray(draft.photos) ? draft.photos.slice(0, 6) : [],
     reportedBy: A.cUser?.name || 'Team BTB',
     reportedById: A.cUser?.id || null,
     reportedAt: nISO(),

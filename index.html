@@ -36,6 +36,7 @@ import {
   tO, tKS, tRc,
   okCf, cxCf,
   openReserveDraft, setReserveItem, setReserveNote, cancelReserveDraft, submitReserve,
+  triggerReservePhotoInput, handleReservePhotoChange, removeReservePhoto,
 } from './js/modules/orders.js';
 
 import {
@@ -65,6 +66,7 @@ import {
   tAU, sNU, aU, dU,
   tAP, sNP, aP2, tP,
   trPh, hdPh, svPr,
+  tAShop, sNShop, aShop, dShop, setShopColor, toggleUserShop,
 } from './js/modules/admin.js';
 
 import {
@@ -106,6 +108,7 @@ window.__BOB__ = {
   tO, tKS, tRc,
   okCf, cxCf,
   openReserveDraft, setReserveItem, setReserveNote, cancelReserveDraft, submitReserve,
+  triggerReservePhotoInput, handleReservePhotoChange, removeReservePhoto,
 
   markAllNotifsSeen, markNotificationSeen, removeNotification,
   toggleNotifs: () => { A.showNotifs = !A.showNotifs; render(); },
@@ -127,6 +130,7 @@ window.__BOB__ = {
   tAU, sNU, aU, dU,
   tAP, sNP, aP2, tP,
   trPh, hdPh, svPr,
+  tAShop, sNShop, aShop, dShop, setShopColor, toggleUserShop,
 
   setAuditTab, setAuditFilter,
   openAuditDraft, openAuditDetail, editAudit, cancelAuditDraft,

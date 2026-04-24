@@ -187,6 +187,89 @@ export async function getCurrentProfile() {
   return { ...data, email: user.email };
 }
 
+// ── Profiles (Manager CRUD) ────────────────────────────────
+export async function fetchProfiles() {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { data, error } = await sb.from('profiles').select('*').order('name');
+  if (error) throw error;
+  return (data || []).map((row) => ({
+    id: row.id,
+    name: row.name || row.email || '',
+    role: row.role || 'user',
+    photo: row.photo_url || null,
+    email: row.email || null,
+    shopIds: Array.isArray(row.shop_ids) ? row.shop_ids : [],
+  }));
+}
+
+export async function upsertProfile(profile) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const payload = compactObject({
+    id: profile.id,
+    name: profile.name,
+    role: profile.role || 'user',
+    photo_url: profile.photo || null,
+    email: profile.email || null,
+    shop_ids: profile.shopIds || [],
+  });
+  const { error } = await sb.from('profiles').upsert(payload);
+  if (error) throw error;
+}
+
+export async function deleteProfile(id) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { error } = await sb.from('profiles').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function loadProfilesIntoState() {
+  setRuntimeFlag('usersLoading', true);
+  setRuntimeFlag('usersError', '');
+  try {
+    if (isTestMode()) {
+      setRuntimeFlag('usersHydrated', true);
+      return A.users;
+    }
+    const rows = await fetchProfiles();
+    if (rows.length) {
+      A.users = rows;
+      sv('us', rows);
+    }
+    setRuntimeFlag('usersHydrated', true);
+    return A.users;
+  } catch (error) {
+    setRuntimeFlag('usersError', error?.message || 'Chargement profils impossible');
+    console.warn('[BOB] loadProfilesIntoState:', error);
+    return A.users;
+  } finally {
+    setRuntimeFlag('usersLoading', false);
+  }
+}
+
+// ── Shops (Manager CRUD) ───────────────────────────────────
+export async function upsertShop(shop) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const payload = compactObject({
+    id: shop.id,
+    name: shop.name,
+    color: shop.color || '#1A7A4A',
+    is_active: shop.isActive !== false,
+  });
+  const { error } = await sb.from('shops').upsert(payload);
+  if (error) throw error;
+}
+
+export async function deleteShop(id) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+  const { error } = await sb.from('shops').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ── Orders ─────────────────────────────────────────────────
 export async function fetchOrders(shopId = null) {
   if (isTestMode()) {

@@ -194,11 +194,13 @@ export const A = {
 
   addU:   false,
   addP:   false,
+  addShop: false,
   addRc:  false,
   showSL: false,
   admTab: 'banner',
-  nU:     { name: '', password: '', role: 'user' },
+  nU:     { name: '', password: '', role: 'user', shopIds: [] },
   nP:     { name: '', cat: 'PAINS', unit: 'pcs', step: 1, price: 0 },
+  nShop:  { id: '', name: '', color: '#0E4B30' },
   rcForm: { sup: '', cart: {} },
 
   runtime: {
@@ -235,6 +237,9 @@ export const A = {
     eventsHydrated: false,
     eventsError: '',
     lastEventsSyncAt: null,
+    usersLoading: false,
+    usersHydrated: false,
+    usersError: '',
   },
 };
 

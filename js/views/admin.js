@@ -11,10 +11,12 @@ import { unseenCountForUser } from '../modules/notifications.js';
 export function bAdmin() {
   const tabs = [
     { id: 'banner',  label: 'Bannière',    icon: '📢' },
+    { id: 'shops',   label: 'Boutiques',   icon: '🏪' },
     { id: 'users',   label: 'Utilisateurs',icon: '👥' },
     { id: 'prods',   label: 'Produits',    icon: '🛍' },
     { id: 'planning',label: 'Planning',    icon: '📆' },
     { id: 'audit',   label: 'Audit',       icon: '🔍' },
+    { id: 'reserves',label: 'Réserves',    icon: '⚠️' },
     { id: 'actlog',  label: 'Actions',     icon: '📋' },
     { id: 'connlog', label: 'Connexions',  icon: '🔐' },
   ];
@@ -22,10 +24,12 @@ export function bAdmin() {
   let content = '';
   switch (A.admTab) {
     case 'banner':  content = secBanner();  break;
+    case 'shops':   content = secShops();   break;
     case 'users':   content = secUsers();   break;
     case 'prods':   content = secProds();   break;
     case 'planning':content = bPlanningSection(); break;
     case 'audit':   content = bAuditSection(); break;
+    case 'reserves':content = secReserves(); break;
     case 'actlog':  content = secActLog();  break;
     case 'connlog': content = secConnLog(); break;
     default:        content = secBanner();
@@ -111,23 +115,126 @@ function secUsers() {
       ` : ''}
 
       ${A.users.map(u => {
-        const roleColor = u.role === 'admin' ? 'var(--red)' : u.role === 'kitchen' ? 'var(--amber)' : 'var(--blue)';
+        const roleColor = u.role === 'admin' ? 'var(--red)' : u.role === 'kitchen' ? 'var(--amber)' : 'var(--green)';
+        const userShops = Array.isArray(u.shopIds) ? u.shopIds : [];
+        const shopsRow = u.role === 'admin' ? '<span style="font-size:10px;color:var(--txt3);font-weight:600">Toutes boutiques</span>' : (A.shops || []).map(sh => {
+          const on = userShops.includes(sh.id);
+          return `<button onclick="window.__BOB__.toggleUserShop('${u.id}','${sh.id}')"
+            aria-pressed="${on}" title="${sh.name}"
+            style="min-height:36px;padding:6px 12px;border-radius:18px;font-size:11px;font-weight:700;border:1.5px solid ${sh.color};background:${on ? sh.color : 'transparent'};color:${on ? '#fff' : sh.color};cursor:pointer;letter-spacing:.3px">${sh.name}</button>`;
+        }).join(' ');
         return `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)">
-            <div style="display:flex;align-items:center;gap:12px">
-              <div style="width:38px;height:38px;border-radius:10px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--txt);font-weight:700;font-size:15px;overflow:hidden;flex-shrink:0">
-                ${u.photo ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover">` : u.name[0]}
+          <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:38px;height:38px;border-radius:10px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--txt);font-weight:700;font-size:15px;overflow:hidden;flex-shrink:0">
+                  ${u.photo ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover">` : u.name[0]}
+                </div>
+                <div>
+                  <div style="font-weight:600;font-size:14px;color:var(--txt)">${u.name}</div>
+                  <div style="font-size:11px;font-weight:700;color:${roleColor};margin-top:1px;font-family:'Archivo Black',sans-serif;letter-spacing:.5px">${(ROLE_LABELS[u.role] || u.role).toUpperCase()}</div>
+                </div>
               </div>
-              <div>
-                <div style="font-weight:600;font-size:14px;color:var(--txt)">${u.name}</div>
-                <div style="font-size:11px;font-weight:700;color:${roleColor};margin-top:1px;font-family:'Syne',sans-serif;letter-spacing:.5px">${(ROLE_LABELS[u.role] || u.role).toUpperCase()}</div>
-              </div>
+              <button onclick="window.__BOB__.dU('${u.id}')"
+                class="btn btn-ghost btn-sm btn-icon"
+                style="color:var(--red);border-color:var(--border)"
+              >✕</button>
             </div>
-            <button onclick="window.__BOB__.dU('${u.id}')"
-              style="width:32px;height:32px;border:1px solid var(--border);background:transparent;border-radius:var(--r2);color:var(--txt3);font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s"
-              onmouseover="this.style.background='#FEE2E2';this.style.color='var(--red)';this.style.borderColor='var(--red)'"
-              onmouseout="this.style.background='transparent';this.style.color='var(--txt3)';this.style.borderColor='var(--border)'"
-            >✕</button>
+            <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+              <span class="label">Boutiques</span>
+              ${shopsRow}
+            </div>
+          </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function secShops() {
+  const palette = ['#0E4B30', '#E8B84B', '#E87B4B', '#4B8BE8', '#9B59B6', '#16A085', '#E74C3C'];
+  return `
+    <div>
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div class="display" style="font-size:14px;color:var(--txt)">Boutiques</div>
+        <button class="btn btn-primary btn-sm" onclick="window.__BOB__.tAShop()">+ Ajouter</button>
+      </div>
+
+      ${A.addShop ? `
+        <div style="padding:14px 16px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;flex-wrap:wrap;gap:10px">
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px">
+              <span class="label">Nom</span>
+              <input class="input" placeholder="Ex: Grünerløkka" oninput="window.__BOB__.sNShop('name',this.value)"/>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px">
+              <span class="label">ID (slug)</span>
+              <input class="input" placeholder="auto si vide" oninput="window.__BOB__.sNShop('id',this.value)"/>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span class="label">Couleur</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              ${palette.map((c) => `<button aria-label="Couleur ${c}" title="${c}" onclick="window.__BOB__.sNShop('color','${c}');this.parentNode.childNodes.forEach(n=>n.style&&n.style.removeProperty('outline'));this.style.outline='2px solid var(--txt)'" style="width:36px;height:36px;border-radius:8px;border:1.5px solid var(--border);background:${c};cursor:pointer"></button>`).join('')}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="btn btn-primary btn-sm" onclick="window.__BOB__.aShop()">Créer</button>
+            <button class="btn btn-ghost btn-sm" onclick="window.__BOB__.tAShop()">Annuler</button>
+          </div>
+        </div>
+      ` : ''}
+
+      ${(A.shops || []).map((sh) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);gap:10px">
+          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+            <div style="width:14px;height:14px;border-radius:50%;background:${sh.color};flex-shrink:0;border:1.5px solid var(--border)"></div>
+            <div style="min-width:0">
+              <div class="display" style="font-size:13px;color:var(--txt)">${sh.name}</div>
+              <div style="font-size:11px;color:var(--txt3);margin-top:2px">${sh.id}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+            ${palette.map((c) => `<button onclick="window.__BOB__.setShopColor('${sh.id}','${c}')" aria-label="Mettre ${sh.name} en ${c}" title="${c}" style="width:32px;height:32px;border-radius:6px;border:2px solid ${sh.color === c ? 'var(--txt)' : 'var(--border)'};background:${c};cursor:pointer"></button>`).join('')}
+          </div>
+          <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)" onclick="window.__BOB__.dShop('${sh.id}')">✕</button>
+        </div>
+      `).join('')}
+
+      ${(!A.shops || A.shops.length === 0) ? `
+        <div style="padding:40px 20px;text-align:center;color:var(--txt3);font-size:13px">Aucune boutique. Ajoute ta première.</div>
+      ` : ''}
+    </div>`;
+}
+
+function secReserves() {
+  const withReserve = (A.orders || []).filter((o) => o.reservation).sort((a, b) => new Date(b.reservation.reportedAt) - new Date(a.reservation.reportedAt));
+  if (!withReserve.length) {
+    return `<div style="padding:40px 20px;text-align:center;color:var(--txt2)">
+      <div style="font-size:28px;margin-bottom:8px">✓</div>
+      <div class="display" style="font-size:14px;color:var(--txt)">Aucune réserve</div>
+      <div style="font-size:12px;margin-top:4px">Les anomalies de réception apparaîtront ici.</div>
+    </div>`;
+  }
+
+  return `
+    <div style="padding:14px">
+      ${withReserve.map((o) => {
+        const r = o.reservation;
+        const shopName = (A.shops || []).find((s) => s.id === o.shopId)?.name || o.shopId;
+        return `
+          <div style="background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:8px;padding:12px 14px;margin-bottom:10px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+              <div>
+                <div class="display" style="font-size:13px;color:var(--txt)">${o.id} · ${shopName}</div>
+                <div style="font-size:11px;color:var(--txt3);margin-top:2px">${r.reportedBy} · ${fD(r.reportedAt)} ${fT(r.reportedAt)}</div>
+              </div>
+              <button onclick="window.__BOB__.openOrderChat('${o.id}','${o.id}');window.__BOB__.goShop('${o.shopId}');window.__BOB__.sSTb('chat')" class="btn btn-ghost btn-sm">💬 Discuter</button>
+            </div>
+            ${(r.items || []).length ? `
+              <div style="margin-top:8px;font-size:12px;color:var(--txt2)">
+                ${r.items.map((it) => `<span style="display:inline-block;padding:2px 8px;background:var(--bg3);border-radius:12px;margin:2px 4px 2px 0;font-weight:600">${it.id} : ${it.actual}/${it.expected} (${it.delta > 0 ? '+' : ''}${it.delta})</span>`).join('')}
+              </div>
+            ` : ''}
+            ${r.note ? `<div style="margin-top:8px;font-size:12px;color:var(--txt2);font-style:italic">« ${r.note} »</div>` : ''}
           </div>`;
       }).join('')}
     </div>`;

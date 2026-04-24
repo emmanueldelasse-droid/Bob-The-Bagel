@@ -518,6 +518,7 @@ function tabOrders() {
                     <div>Par ${o.reservation.reportedBy} · ${fD(o.reservation.reportedAt)} ${fT(o.reservation.reportedAt)}</div>
                     ${(o.reservation.items || []).length ? `<div style="margin-top:4px">${o.reservation.items.map(it => { const p = gP(it.id); return `${p?.name || it.id} : ${it.actual}/${it.expected} ${p?.unit || ''}`; }).join(' · ')}</div>` : ''}
                     ${o.reservation.note ? `<div style="margin-top:4px;font-style:italic">« ${o.reservation.note} »</div>` : ''}
+                    ${(o.reservation.photos || []).length ? `<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${o.reservation.photos.map((url) => `<img src="${url}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1.5px solid var(--amber)"/>`).join('')}</div>` : ''}
                   </div>
                 ` : ''}
 
