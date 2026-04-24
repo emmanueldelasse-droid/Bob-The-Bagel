@@ -331,6 +331,7 @@ export async function fetchOrders(shopId = null) {
 }
 
 function buildOrderInsertVariants(order) {
+  const shopUuid = uuidOrNull(order.shopId);
   const common = {
     id: order.id,
     status: order.status || 'pending',
@@ -342,7 +343,7 @@ function buildOrderInsertVariants(order) {
   return [
     compactObject({
       ...common,
-      shop_id: order.shopId,
+      shop_id: shopUuid,
       shop_name: order.shopName,
       shop_color: order.shopColor,
       created_at: order.createdAt,
@@ -355,7 +356,7 @@ function buildOrderInsertVariants(order) {
     }),
     compactObject({
       ...common,
-      shop_id: order.shopId,
+      shop_id: shopUuid,
       created_at: order.createdAt,
       updated_at: order.updatedAt,
       delivery: order.delivery,
@@ -366,7 +367,7 @@ function buildOrderInsertVariants(order) {
     }),
     compactObject({
       ...common,
-      shopId: order.shopId,
+      shopId: shopUuid,
       shopName: order.shopName,
       shopColor: order.shopColor,
       createdAt: order.createdAt,
@@ -379,7 +380,7 @@ function buildOrderInsertVariants(order) {
     }),
     compactObject({
       id: order.id,
-      shop_id: order.shopId,
+      shop_id: shopUuid,
       items: order.items || [],
       status: order.status || 'pending',
       created_at: order.createdAt,
@@ -509,8 +510,9 @@ export async function fetchShops() {
 
 function normalizeShopRow(row) {
   if (!row) return null;
+  const hasUuidId = typeof row.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(row.id);
   return {
-    id: pickFirst(row.id, row.slug),
+    id: hasUuidId ? row.id : pickFirst(row.slug, row.id),
     slug: row.slug || null,
     name: pickFirst(row.name, row.label, row.slug, row.id),
     color: pickFirst(row.color, row.brand_color, '#0E4B30'),
@@ -519,7 +521,14 @@ function normalizeShopRow(row) {
 }
 
 function fallbackShops() {
-  return clone(A.shops && A.shops.length ? A.shops : SHOPS);
+  // On NE retombe plus sur les shops hardcodes (qui portent des ids texte
+  // genre 'shop3') parce que ca pollue A.shops avec des faux ids et empeche
+  // tous les writes uuid-FK. Si Supabase ne repond pas, A.shops reste vide
+  // et l'UI surface l'erreur a l'utilisateur.
+  if (A.shops && A.shops.length) {
+    return clone(A.shops.filter((s) => typeof s.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s.id)));
+  }
+  return [];
 }
 
 export async function loadShopsIntoState() {
