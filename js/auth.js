@@ -182,8 +182,8 @@ export function canAccessShop(_shopId) {
 }
 
 export function canAccessKitchen() {
-  if (!A.cUser) return false;
-  return isAdmin() || isKitchen();
+  // Team BTB peut aussi travailler en cuisine centrale : tout profil connecte y accede.
+  return !!A.cUser;
 }
 
 export function changePassword(_userId, _newPassword) {

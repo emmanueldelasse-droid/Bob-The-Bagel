@@ -117,28 +117,59 @@ function secUsers() {
       ${A.users.map(u => {
         const roleColor = u.role === 'admin' ? 'var(--red)' : u.role === 'kitchen' ? 'var(--amber)' : 'var(--green)';
         const userShops = Array.isArray(u.shopIds) ? u.shopIds : [];
+        const isEditing = A.editingUserId === u.id;
         const shopsRow = u.role === 'admin' ? '<span style="font-size:10px;color:var(--txt3);font-weight:600">Toutes boutiques</span>' : (A.shops || []).map(sh => {
           const on = userShops.includes(sh.id);
           return `<button onclick="window.__BOB__.toggleUserShop('${u.id}','${sh.id}')"
             aria-pressed="${on}" title="${sh.name}"
             style="min-height:36px;padding:6px 12px;border-radius:18px;font-size:11px;font-weight:700;border:1.5px solid ${sh.color};background:${on ? sh.color : 'transparent'};color:${on ? '#fff' : sh.color};cursor:pointer;letter-spacing:.3px">${sh.name}</button>`;
         }).join(' ');
+
+        if (isEditing) {
+          return `
+            <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:var(--bg3);display:flex;flex-direction:column;gap:10px">
+              <div class="label">Modifier utilisateur</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <input class="input" placeholder="Nom" value="${A.eU?.name || ''}" oninput="window.__BOB__.sEU('name',this.value)" style="flex:1;min-width:180px"/>
+                <select class="select" onchange="window.__BOB__.sEU('role',this.value)" style="min-width:140px">
+                  <option value="user" ${A.eU?.role === 'user' ? 'selected' : ''}>Team BTB</option>
+                  <option value="kitchen" ${A.eU?.role === 'kitchen' ? 'selected' : ''}>Kitchen</option>
+                  <option value="admin" ${A.eU?.role === 'admin' ? 'selected' : ''}>Manager</option>
+                </select>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-primary btn-sm" onclick="window.__BOB__.saveEditUser()">Enregistrer</button>
+                <button class="btn btn-ghost btn-sm" onclick="window.__BOB__.cancelEditUser()">Annuler</button>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                <span class="label">Boutiques</span>
+                ${shopsRow}
+              </div>
+            </div>`;
+        }
+
         return `
           <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
-            <div style="display:flex;align-items:center;justify-content:space-between">
-              <div style="display:flex;align-items:center;gap:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+              <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1">
                 <div style="width:38px;height:38px;border-radius:10px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--txt);font-weight:700;font-size:15px;overflow:hidden;flex-shrink:0">
                   ${u.photo ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover">` : u.name[0]}
                 </div>
-                <div>
-                  <div style="font-weight:600;font-size:14px;color:var(--txt)">${u.name}</div>
+                <div style="min-width:0">
+                  <div style="font-weight:600;font-size:14px;color:var(--txt);overflow:hidden;text-overflow:ellipsis">${u.name}</div>
                   <div style="font-size:11px;font-weight:700;color:${roleColor};margin-top:1px;font-family:'Archivo Black',sans-serif;letter-spacing:.5px">${(ROLE_LABELS[u.role] || u.role).toUpperCase()}</div>
                 </div>
               </div>
-              <button onclick="window.__BOB__.dU('${u.id}')"
-                class="btn btn-ghost btn-sm btn-icon"
-                style="color:var(--red);border-color:var(--border)"
-              >✕</button>
+              <div style="display:flex;gap:4px;flex-shrink:0">
+                <button onclick="window.__BOB__.startEditUser('${u.id}')"
+                  class="btn btn-ghost btn-sm btn-icon" title="Modifier"
+                  style="border-color:var(--border)"
+                >✎</button>
+                <button onclick="window.__BOB__.dU('${u.id}')"
+                  class="btn btn-ghost btn-sm btn-icon" title="Supprimer"
+                  style="color:var(--red);border-color:var(--border)"
+                >✕</button>
+              </div>
             </div>
             <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
               <span class="label">Boutiques</span>
@@ -183,21 +214,51 @@ function secShops() {
         </div>
       ` : ''}
 
-      ${(A.shops || []).map((sh) => `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);gap:10px">
-          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
-            <div style="width:14px;height:14px;border-radius:50%;background:${sh.color};flex-shrink:0;border:1.5px solid var(--border)"></div>
-            <div style="min-width:0">
-              <div class="display" style="font-size:13px;color:var(--txt)">${sh.name}</div>
-              <div style="font-size:11px;color:var(--txt3);margin-top:2px">${sh.slug || sh.id}</div>
+      ${(A.shops || []).map((sh) => {
+        const isEditing = A.editingShopId === sh.id;
+        if (isEditing) {
+          return `
+            <div style="padding:14px 16px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px">
+              <div class="label">Modifier ${sh.name}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:10px">
+                <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:160px">
+                  <span class="label">Nom</span>
+                  <input class="input" value="${A.eShop?.name || ''}" oninput="window.__BOB__.sEShop('name',this.value)"/>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:160px">
+                  <span class="label">Slug</span>
+                  <input class="input" value="${A.eShop?.slug || ''}" placeholder="auto si vide" oninput="window.__BOB__.sEShop('slug',this.value)"/>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <span class="label">Couleur</span>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  ${palette.map((c) => `<button aria-label="Couleur ${c}" title="${c}" onclick="window.__BOB__.sEShop('color','${c}');this.parentNode.childNodes.forEach(n=>n.style&&n.style.removeProperty('outline'));this.style.outline='2px solid var(--txt)'" style="width:36px;height:36px;border-radius:8px;border:1.5px solid var(--border);background:${c};cursor:pointer;outline:${(A.eShop?.color || '') === c ? '2px solid var(--txt)' : 'none'}"></button>`).join('')}
+                </div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-primary btn-sm" onclick="window.__BOB__.saveEditShop()">Enregistrer</button>
+                <button class="btn btn-ghost btn-sm" onclick="window.__BOB__.cancelEditShop()">Annuler</button>
+              </div>
+            </div>`;
+        }
+
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+              <div style="width:14px;height:14px;border-radius:50%;background:${sh.color};flex-shrink:0;border:1.5px solid var(--border)"></div>
+              <div style="min-width:0">
+                <div class="display" style="font-size:13px;color:var(--txt)">${sh.name}</div>
+                <div style="font-size:11px;color:var(--txt3);margin-top:2px">${sh.slug || sh.id}</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:4px;flex-shrink:0">
+              <button class="btn btn-ghost btn-sm btn-icon" title="Modifier" onclick="window.__BOB__.startEditShop('${sh.id}')">✎</button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)" title="Supprimer" onclick="window.__BOB__.dShop('${sh.id}')">✕</button>
             </div>
           </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-            ${palette.map((c) => `<button onclick="window.__BOB__.setShopColor('${sh.id}','${c}')" aria-label="Mettre ${sh.name} en ${c}" title="${c}" style="width:32px;height:32px;border-radius:6px;border:2px solid ${sh.color === c ? 'var(--txt)' : 'var(--border)'};background:${c};cursor:pointer"></button>`).join('')}
-          </div>
-          <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)" onclick="window.__BOB__.dShop('${sh.id}')">✕</button>
-        </div>
-      `).join('')}
+        `;
+      }).join('')}
 
       ${(!A.shops || A.shops.length === 0) ? `
         <div style="padding:40px 20px;text-align:center;color:var(--txt3);font-size:13px">Aucune boutique. Ajoute ta première.</div>

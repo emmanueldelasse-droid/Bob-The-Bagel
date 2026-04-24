@@ -199,9 +199,13 @@ export const A = {
   addRc:  false,
   showSL: false,
   admTab: 'banner',
+  editingUserId: null,
+  editingShopId: null,
   nU:     { name: '', password: '', role: 'user', shopIds: [] },
+  eU:     { id: '', name: '', role: 'user' },
   nP:     { name: '', cat: 'PAINS', unit: 'pcs', step: 1, price: 0 },
   nShop:  { id: '', name: '', color: '#0E4B30' },
+  eShop:  { id: '', name: '', slug: '', color: '#0E4B30' },
   rcForm: { sup: '', cart: {} },
 
   runtime: {

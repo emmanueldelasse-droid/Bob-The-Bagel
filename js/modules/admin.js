@@ -91,6 +91,51 @@ export function dU(id) {
   render();
 }
 
+// ── Edition utilisateurs ───────────────────────────────────
+export function startEditUser(id) {
+  const u = A.users.find((x) => x.id === id);
+  if (!u) return;
+  A.editingUserId = id;
+  A.eU = { id, name: u.name || '', role: u.role || 'user' };
+  render();
+}
+
+export function cancelEditUser() {
+  A.editingUserId = null;
+  A.eU = { id: '', name: '', role: 'user' };
+  render();
+}
+
+export function sEU(field, val) {
+  if (!A.eU) A.eU = { id: '', name: '', role: 'user' };
+  A.eU[field] = val;
+}
+
+export async function saveEditUser() {
+  const f = A.eU || {};
+  if (!f.id) return;
+  const current = A.users.find((u) => u.id === f.id);
+  if (!current) { toast('Utilisateur introuvable', 'error'); return; }
+  if (!f.name?.trim()) { toast('Nom requis', 'error'); return; }
+
+  const nameTaken = A.users.some((u) => u.id !== f.id && u.name.toLowerCase() === f.name.trim().toLowerCase());
+  if (nameTaken) { toast('Nom déjà utilisé', 'error'); return; }
+
+  const next = { ...current, name: f.name.trim(), role: f.role || current.role };
+  A.users = A.users.map((u) => (u.id === f.id ? next : u));
+  sv('us', A.users);
+  try {
+    await upsertProfile(next);
+  } catch (error) {
+    console.warn('[BOB] saveEditUser upsertProfile failed (kept local):', error);
+  }
+  alog(`Utilisateur maj: ${next.name}`);
+  toast('Utilisateur mis à jour ✓');
+  A.editingUserId = null;
+  A.eU = { id: '', name: '', role: 'user' };
+  render();
+}
+
 // ── Boutiques (Manager CRUD) ───────────────────────────────
 const SHOP_COLORS = ['#0E4B30', '#E8B84B', '#E87B4B', '#4B8BE8', '#9B59B6', '#16A085', '#E74C3C'];
 
@@ -159,6 +204,61 @@ export function dShop(id) {
       render();
     },
   };
+  render();
+}
+
+// ── Edition boutiques ──────────────────────────────────────
+export function startEditShop(id) {
+  const sh = (A.shops || []).find((s) => s.id === id);
+  if (!sh) return;
+  A.editingShopId = id;
+  A.eShop = {
+    id,
+    name: sh.name || '',
+    slug: sh.slug || (typeof id === 'string' && !/^[0-9a-f-]{36}$/i.test(id) ? id : ''),
+    color: sh.color || '#0E4B30',
+  };
+  render();
+}
+
+export function cancelEditShop() {
+  A.editingShopId = null;
+  A.eShop = { id: '', name: '', slug: '', color: '#0E4B30' };
+  render();
+}
+
+export function sEShop(field, val) {
+  if (!A.eShop) A.eShop = { id: '', name: '', slug: '', color: '#0E4B30' };
+  A.eShop[field] = val;
+}
+
+export async function saveEditShop() {
+  const f = A.eShop || {};
+  if (!f.id) return;
+  const current = (A.shops || []).find((s) => s.id === f.id);
+  if (!current) { toast('Boutique introuvable', 'error'); return; }
+  if (!f.name?.trim()) { toast('Nom requis', 'error'); return; }
+
+  const nextSlug = (f.slug?.trim() || slugify(f.name));
+  const slugTaken = (A.shops || []).some((s) => s.id !== f.id && (s.slug || '').toLowerCase() === nextSlug.toLowerCase());
+  if (slugTaken) { toast('Slug déjà utilisé', 'error'); return; }
+
+  const next = { ...current, name: f.name.trim(), slug: nextSlug, color: f.color || current.color };
+  A.shops = A.shops.map((s) => (s.id === f.id ? next : s));
+  sv('sh', A.shops);
+  try {
+    const saved = await upsertShop(next);
+    if (saved) {
+      A.shops = A.shops.map((s) => (s.id === f.id ? saved : s));
+      sv('sh', A.shops);
+    }
+  } catch (error) {
+    console.warn('[BOB] saveEditShop upsertShop failed (kept local):', error);
+  }
+  alog(`Boutique maj: ${next.name}`);
+  toast('Boutique mise à jour ✓');
+  A.editingShopId = null;
+  A.eShop = { id: '', name: '', slug: '', color: '#0E4B30' };
   render();
 }
 
