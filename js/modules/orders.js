@@ -6,6 +6,7 @@
 import { A, sv } from '../state.js';
 import { gId, nISO, dDel, toast, alog, render, isValidDelivery } from '../utils.js';
 import { createOrder as createOrderApi, loadOrdersIntoState, patchOrder, updateStock as updateStockApi, loadStockIntoState } from '../api/supabase.js';
+import { createNotification } from './notifications.js';
 
 function currentTimestamp() {
   return nISO();
@@ -262,6 +263,109 @@ export function cfKRc(id) {
       render();
     },
   };
+  render();
+}
+
+// ── Réserve à la réception (Team BTB → notif Manager) ────────
+export function openReserveDraft(orderId) {
+  const order = A.orders.find((o) => o.id === orderId);
+  if (!order) return;
+  A.reserveDraft = {
+    orderId,
+    note: '',
+    items: (order.items || []).map((it) => ({ id: it.id, expected: it.qty, actual: it.qty })),
+  };
+  render();
+}
+
+export function setReserveItem(itemId, field, value) {
+  if (!A.reserveDraft) return;
+  const v = Math.max(0, parseInt(value) || 0);
+  A.reserveDraft.items = A.reserveDraft.items.map((i) =>
+    i.id === itemId ? { ...i, [field]: v } : i
+  );
+}
+
+export function setReserveNote(value) {
+  if (!A.reserveDraft) return;
+  A.reserveDraft.note = String(value || '').slice(0, 600);
+}
+
+export function cancelReserveDraft() {
+  A.reserveDraft = null;
+  render();
+}
+
+export async function submitReserve() {
+  const draft = A.reserveDraft;
+  if (!draft?.orderId) return;
+  const order = A.orders.find((o) => o.id === draft.orderId);
+  if (!order) { toast('Commande introuvable', 'error'); return; }
+
+  const deltas = draft.items
+    .map((i) => ({ id: i.id, expected: i.expected, actual: i.actual, delta: i.actual - i.expected }))
+    .filter((i) => i.delta !== 0);
+
+  if (!deltas.length && !draft.note.trim()) {
+    toast('Renseigne un manquant ou une note', 'warn');
+    return;
+  }
+
+  const reservation = {
+    note: draft.note.trim(),
+    items: deltas,
+    reportedBy: A.cUser?.name || 'Team BTB',
+    reportedById: A.cUser?.id || null,
+    reportedAt: nISO(),
+  };
+
+  try {
+    await patchOrder(draft.orderId, {
+      status: 'received',
+      reservation,
+      updatedAt: currentTimestamp(),
+      modifiedBy: A.cUser?.name || null,
+    });
+  } catch (error) {
+    console.warn('[BOB] reserve patch failed (fallback local):', error);
+  }
+
+  const ns = JSON.parse(JSON.stringify(A.stock));
+  if (!ns[order.shopId]) ns[order.shopId] = {};
+  for (const item of draft.items) {
+    const current = ns[order.shopId][item.id] || { qty: 0, alert: 10 };
+    ns[order.shopId][item.id] = { qty: current.qty + (item.actual || 0), alert: current.alert ?? 10 };
+    try {
+      await updateStockApi(order.shopId, item.id, 'qty', ns[order.shopId][item.id].qty);
+    } catch (e) {
+      console.warn('[BOB] stock update failed (fallback local):', e);
+    }
+  }
+  A.stock = ns;
+  sv('st', A.stock);
+
+  A.orders = A.orders.map((o) =>
+    o.id === draft.orderId ? { ...o, status: 'received', reservation } : o
+  );
+  sv('or', A.orders);
+
+  const shopName = A.shops?.find((s) => s.id === order.shopId)?.name || order.shopId;
+  const missingSummary = deltas.length
+    ? deltas.map((d) => `${d.id} ${d.delta > 0 ? '+' : ''}${d.delta}`).join(', ')
+    : '(note uniquement)';
+
+  createNotification({
+    type: 'reserve',
+    role: 'admin',
+    title: `Réserve à la réception · ${shopName}`,
+    body: `${reservation.reportedBy} · ${order.id}\n${missingSummary}${reservation.note ? `\n${reservation.note}` : ''}`,
+    shopId: order.shopId,
+    orderId: order.id,
+  });
+
+  alog(`Réserve ${order.id} par ${reservation.reportedBy}`);
+  A.reserveDraft = null;
+  toast('Réserve enregistrée · Manager notifié', 'warn');
   render();
 }
 

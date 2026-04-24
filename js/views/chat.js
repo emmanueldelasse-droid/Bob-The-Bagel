@@ -9,6 +9,8 @@ import {
   messagesForConv,
   unreadForConv,
   totalUnread,
+  readersForMessage,
+  expectedReadersForConv,
 } from '../modules/chat.js';
 
 function roleColor(role) {
@@ -18,9 +20,9 @@ function roleColor(role) {
 }
 
 function roleLabel(role) {
-  if (role === 'admin') return 'Admin';
+  if (role === 'admin') return 'Manager';
   if (role === 'kitchen') return 'Cuisine';
-  return 'Boutique';
+  return 'Team BTB';
 }
 
 function runtimePanel({ kind = 'info', title, text, meta = '' }) {
@@ -87,6 +89,34 @@ function chatRuntimeNotice() {
   return '';
 }
 
+function readReceipt(message, isMe) {
+  if (!isMe) return '';
+  const readers = readersForMessage(message).filter((u) => u.id !== message.senderId);
+  const expected = expectedReadersForConv(message.convId).filter((u) => u.id !== message.senderId);
+  if (!expected.length) return '';
+  const readCount = readers.length;
+
+  if (readCount === 0) {
+    return `<div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:2px;text-align:right">Envoyé</div>`;
+  }
+
+  const chips = readers.slice(0, 4).map((u) => {
+    const initial = escHtml((u.name || '?').charAt(0).toUpperCase());
+    return `<span title="${escHtml(u.name)}" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:${roleColor(u.role)};color:#fff;font-size:8px;font-weight:700;border:1px solid var(--txt)">${initial}</span>`;
+  }).join('');
+  const more = readers.length > 4 ? `<span style="font-size:9px;color:rgba(255,255,255,.6);margin-left:2px">+${readers.length - 4}</span>` : '';
+
+  const prefix = readCount === expected.length
+    ? `<span style="font-size:10px;color:rgba(255,255,255,.75);font-weight:700">Vu par tous</span>`
+    : `<span style="font-size:10px;color:rgba(255,255,255,.65)">Vu · ${readCount}/${expected.length}</span>`;
+
+  return `
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:3px">
+      ${prefix}
+      <span style="display:inline-flex;gap:2px">${chips}${more}</span>
+    </div>`;
+}
+
 function msgBubble(message) {
   const isMe = message.senderId === A.cUser?.id;
   const isUrgent = message.priority === 'urgent';
@@ -124,6 +154,7 @@ function msgBubble(message) {
           </div>
         ` : ''}
         <div style="font-size:10px;color:${isMe ? 'rgba(255,255,255,.5)' : 'var(--txt3)'};margin-top:4px;text-align:right">${fT(message.createdAt)}</div>
+        ${readReceipt(message, isMe)}
       </div>
     </div>`;
 }

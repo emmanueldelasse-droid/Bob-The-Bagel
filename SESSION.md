@@ -10,13 +10,13 @@
 - Repo : `emmanueldelasse-droid/Bob-The-Bagel`
 - Branche : `main`
 - Déploiement : Vercel
-- Dernière mise à jour : 2026-04-22
+- Dernière mise à jour : 2026-04-24
 - Dernière IA : Claude (Opus 4.7)
 
 ## 2) RÉSUMÉ ULTRA-COURT
 - Runtime réel : app statique `index.html` + modules JS ES6, **pas React**.
 - Backend cible : Supabase comme **source de vérité unique**.
-- État réel : commandes, stock et chat sont branchés à Supabase avec hydratation, synchro live et états UI visibles ; en mode test local, commandes, stock ET chat retombent désormais tous en local. Les photos chat sont envoyées (Supabase Storage en prod, data URL en test). Les boutiques sont maintenant hydratées depuis Supabase (`A.shops`) avec fallback local sur le hardcode `SHOPS`. L'accueil reste en accès test direct par boutons Admin/User.
+- État réel : commandes, stock et chat sont branchés à Supabase avec hydratation, synchro live et états UI visibles ; en mode test local, commandes, stock ET chat retombent en local. Les profils sont renommés Team BTB (user) et Manager (admin). Flow login en 2 étapes : choix profil → stub identifiant/mot de passe → select boutique. Le Manager est un superset de Team BTB + tâches admin (planning équipe, audit, stock, produits, bannière). Nouveau module planning personnel par boutique (admin + onglet contextuel shop). Réserve à la réception de commande avec notification Manager (pastille cloche dans headers). Chat : read receipts (vu par qui, initiales). Thème adapté au site bobthebagel.com (vert brand `#0E4B30`, police display Archivo Black).
 
 ## 3) ÉTAT ACTUEL RÉEL
 ### Ce qui existe déjà
@@ -32,6 +32,13 @@
 - Bannière admin
 - Profil front
 - Audit boutique (admin → onglet Audit : liste, création, sections propreté/stock/équipements/hygiène/service, photos par item + photo générale, score auto OK/KO/N/A)
+- Login en 2 étapes (profil → identifiant stub → select)
+- Planning personnel par boutique (section admin + onglet contextuel dans la vue boutique, vue semaine ou liste, CRUD shifts Manager uniquement)
+- Réserve sur réception commande (Team BTB signale manquant/anomalie, item par item + note, notification Manager créée)
+- Centre de notifications (cloche + badge non lus, sheet dédiée, mark seen / mark all seen)
+- Read receipts chat (vu par N/M, initiales des lecteurs sur messages envoyés)
+- Pastille sur onglet `Commandes` (nombre de commandes en attente de réception pour la boutique active)
+- Thème BOBtheBAGEL : fond clair, vert brand `#0E4B30` en accent primaire, police display Archivo Black sur logo / boutons / labels
 
 ### Ce qui est déjà branché côté Supabase
 - Auth email / mot de passe toujours disponible côté backend cible
@@ -98,9 +105,12 @@
 - `js/views/admin.js`
 - `js/views/chat.js`
 - `js/views/audit.js`
+- `js/modules/planning.js`
+- `js/views/planning.js`
+- `js/modules/notifications.js`
 
 ## 7) PROCHAINE ACTION UNIQUE
-**NEXT_ACTION** : provisionner côté Supabase la table `audits` et le bucket `audit-photos` (RLS admin/manager), puis trancher le flux admin users sur Supabase Auth (G1, P0) et appliquer les droits par boutique (I1).
+**NEXT_ACTION** : brancher le mot de passe profil sur Supabase Auth après les tests (G1, P0), puis provisionner les tables `planning`, `notifications`, `audits` + bucket `audit-photos` (RLS Manager) et appliquer les droits par boutique (I1).
 
 ## 8) BLOCAGES / RISQUES
 - App encore hybride = comportement non totalement fiable en multi-utilisateur réel
@@ -134,6 +144,12 @@
 | O1 | Supprimer les faux écrans “finis” | TODO | P1 | Produit plus honnête et plus propre |
 | P1 | Ajouter des états loading/error visibles sur commandes/stock | DONE | P1 | UX plus fiable et moins trompeuse |
 | Q1 | Section audit admin (propreté/stock/équipements/hygiène/service) | DOING | P1 | Manager peut auditer une boutique avec photos + score |
+| R1 | Renommer profils Team BTB / Manager + flow login 2 étapes | DONE | P0 | Profils clairs + vraie saisie identifiant |
+| S1 | Planning personnel par boutique (CRUD Manager) | DOING | P1 | Manager planifie les shifts, Team BTB consulte |
+| T1 | Réserve sur réception commande + notif Manager | DONE | P1 | Anomalie/manquant tracée et remontée |
+| U1 | Pastilles notifications (cloche) + read receipts chat | DONE | P1 | Visibilité non lus / qui a lu quoi |
+| V1 | Adapter thème au site bobthebagel.com (vert brand + Archivo Black) | DONE | P2 | Cohérence de marque |
+| W1 | Brancher planning / réserve / notifications sur Supabase | TODO | P1 | Fin du mode local pour ces modules |
 
 ## 10) DERNIÈRES DÉCISIONS VALIDÉES
 - Runtime officiel de reprise = app actuelle HTML/JS modulaire
@@ -154,14 +170,13 @@
 - Audit contextuel : un onglet 🔍 Audit apparaît dans la vue boutique uniquement si l'utilisateur est admin. En contexte "shop" (`A.auditContext = 'shop'`), la liste est filtrée sur `A.selShop`, les filtres inter-boutiques sont masqués et le dropdown boutique de l'édition est remplacé par une puce figée. Le panneau admin garde la vue audit globale (`A.auditContext = 'admin'`) avec filtres + bouton par boutique.
 
 ## 11) DERNIÈRE SESSION
-- Date : 2026-04-22
+- Date : 2026-04-24
 - IA : Claude (Opus 4.7)
-- Fait : alignement du chat sur le mode test + photos chat (bouton 📎) + sortie des boutiques du hardcode `SHOPS` via `A.shops` hydraté par `loadShopsIntoState` + section Audit admin complète (module + vue + intégration onglet admin) avec sections prédéfinies propreté/stock/équipements/hygiène/service, items ok/nok/na + commentaires, photos multiples par item et photo générale, score auto, hydratation `loadAuditsIntoState` (Supabase `audits` en prod, fallback local en test)
-- Fichiers inspectés : `SESSION.md`, `index.html`, `js/state.js`, `js/auth.js`, `js/router.js`, `js/api/supabase.js`, `js/utils.js`, `js/modules/chat.js`, `js/modules/admin.js`, `js/modules/calendar.js`, `js/views/chat.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/calendar.js`, `js/views/admin.js`
-- Fichiers modifiés : `js/modules/chat.js`, `js/views/chat.js`, `js/state.js`, `js/auth.js`, `js/api/supabase.js`, `js/router.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/calendar.js`, `js/modules/calendar.js`, `js/views/admin.js`, `index.html`, `SESSION.md`
-- Fichiers créés : `js/modules/audit.js`, `js/views/audit.js`
-- Suivi : admin = user + spéciaux → login admin va désormais sur `select` et un bouton "Panneau admin" est exposé pour accéder à `bAdmin` (modifs : `js/auth.js`, `js/views/select.js`)
-- Points ouverts : provisionner table `audits` et bucket `audit-photos` Supabase (+ RLS) ; valider chat + photos contre la vraie base Supabase ; valider schéma `shops` ; G1 (admin users Supabase Auth) et I1 (droits par boutique)
+- Fait : renommage profils (User → Team BTB, Admin → Manager) + flow login en 2 étapes (profil → identifiant stub → select) + section Planning personnel (module + vue + tab admin + tab contextuel shop, CRUD Manager) + adaptation thème bobthebagel.com (vert brand `#0E4B30`, police Archivo Black display, fond clair) + réserve sur réception commande (Team BTB signale manquant/anomalie avec delta qty + note) + centre de notifications Manager avec cloche + badge unseen + sheet dédiée + pastille `Commandes` pour attente réception + read receipts chat (vu par N/M, initiales)
+- Fichiers inspectés : `SESSION.md`, `index.html`, `js/state.js`, `js/auth.js`, `js/router.js`, `js/utils.js`, `js/views/login.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/admin.js`, `js/views/chat.js`, `js/views/modals.js`, `js/views/calendar.js`, `js/modules/chat.js`, `js/modules/admin.js`, `js/modules/orders.js`, `js/modules/calendar.js`, `css/base.css`, `css/components.css`, `css/layout.css`
+- Fichiers modifiés : `js/state.js`, `js/auth.js`, `js/router.js`, `js/views/login.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/admin.js`, `js/views/chat.js`, `js/views/modals.js`, `js/modules/chat.js`, `js/modules/admin.js`, `js/modules/orders.js`, `css/base.css`, `css/components.css`, `css/layout.css`, `index.html`, `SESSION.md`
+- Fichiers créés : `js/modules/planning.js`, `js/views/planning.js`, `js/modules/notifications.js`
+- Points ouverts : G1 (brancher mot de passe Supabase Auth après tests), I1 (droits par boutique), brancher planning + notifications + réserve sur Supabase (W1), valider visuellement sur tous écrans que le thème brand ne casse pas de contraste (bannières, toasts, statuts)
 
 ## 12) FORMAT OBLIGATOIRE POUR TOUTE IA
 ### Au démarrage

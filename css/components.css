@@ -11,10 +11,11 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
+  font-family: 'Archivo Black', 'Syne', sans-serif;
+  font-weight: 900;
   font-size: 13px;
   letter-spacing: .5px;
+  text-transform: uppercase;
   padding: 0 18px;
   height: 44px;
   border-radius: var(--r2);
@@ -26,11 +27,11 @@
 .btn:active { transform: scale(.97); opacity: .85; }
 
 .btn-primary {
-  background: var(--txt);
-  color: var(--bg2);
-  border-color: var(--txt);
+  background: var(--green);
+  color: #fff;
+  border-color: var(--green);
 }
-.btn-primary:hover { opacity: .88; }
+.btn-primary:hover { background: var(--green2); border-color: var(--green2); }
 
 .btn-danger {
   background: var(--red);
@@ -236,8 +237,8 @@
 }
 .cat-line { flex: 1; height: 1px; background: var(--border); }
 .cat-label {
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
+  font-family: 'Archivo Black', 'Syne', sans-serif;
+  font-weight: 900;
   font-size: 10px;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -249,8 +250,8 @@
 }
 
 .sub-label {
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
+  font-family: 'Archivo Black', 'Syne', sans-serif;
+  font-weight: 900;
   font-size: 9px;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -314,12 +315,13 @@
   border: 1px solid var(--border);
 }
 .modal-title {
-  font-family: 'Syne', sans-serif;
-  font-weight: 800;
+  font-family: 'Archivo Black', 'Syne', sans-serif;
+  font-weight: 900;
   font-size: 17px;
   color: var(--txt);
   margin-bottom: 8px;
   letter-spacing: -.3px;
+  text-transform: uppercase;
 }
 
 /* ══ BOTTOM SHEET ═════════════════════════════════════════ */

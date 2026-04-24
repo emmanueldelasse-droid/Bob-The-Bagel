@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>BOBtheBAGEL</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&family=Dancing+Script:wght@700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&family=Dancing+Script:wght@700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="css/base.css"/>
 <link rel="stylesheet" href="css/components.css"/>
 <link rel="stylesheet" href="css/layout.css"/>
@@ -23,7 +23,7 @@
 
 import { A, CATEGORY_ICONS, setRuntimeFlag } from './js/state.js';
 import { render, cSec, aP, oCats, gP, fD, fT, fDl, dDel, nISO, cap, setBApp } from './js/utils.js';
-import { dLog, logout, isAdmin, canAccessKitchen, restoreSession } from './js/auth.js';
+import { dLog, logout, isAdmin, canAccessKitchen, restoreSession, pickLoginRole, setLoginField, backToLoginProfile, submitLogin } from './js/auth.js';
 import { bApp, goSel, goShop, goKit, goAdm, switchShop, sSTb, sKTb, sSCat, sRCat, sSch, toggleDark, setLang } from './js/router.js';
 
 import {
@@ -35,7 +35,14 @@ import {
   stEQ, sEQ, svEQ, cxEQ,
   tO, tKS, tRc,
   okCf, cxCf,
+  openReserveDraft, setReserveItem, setReserveNote, cancelReserveDraft, submitReserve,
 } from './js/modules/orders.js';
+
+import {
+  markAllSeen as markAllNotifsSeen,
+  markNotificationSeen,
+  removeNotification,
+} from './js/modules/notifications.js';
 
 import { uSt, tSL, tARc, sRS, sRC, sbRc, prtPDF } from './js/modules/stock.js';
 
@@ -68,6 +75,12 @@ import {
   saveAuditDraft, deleteAudit,
 } from './js/modules/audit.js';
 
+import {
+  setPlanTab, setPlanShopFilter, setPlanRefDate, shiftPlanRef, planToday,
+  openPlanDraft, editPlanShift, cancelPlanDraft,
+  setPlanDraft, savePlanDraft, deletePlanShift,
+} from './js/modules/planning.js';
+
 import { getSupabase } from './js/api/supabase.js';
 
 const sb = getSupabase();
@@ -79,6 +92,7 @@ window.__BOB__ = {
   CATEGORY_ICONS,
 
   dLog, logout,
+  pickLoginRole, setLoginField, backToLoginProfile, submitLogin,
 
   goSel, goShop, goKit, goAdm, switchShop,
   sSTb, sKTb, sSCat, sRCat, sSch,
@@ -92,6 +106,10 @@ window.__BOB__ = {
   stEQ, sEQ, svEQ, cxEQ,
   tO, tKS, tRc,
   okCf, cxCf,
+  openReserveDraft, setReserveItem, setReserveNote, cancelReserveDraft, submitReserve,
+
+  markAllNotifsSeen, markNotificationSeen, removeNotification,
+  toggleNotifs: () => { A.showNotifs = !A.showNotifs; render(); },
 
   uSt, tSL, tARc, sRS, sRC, sbRc, prtPDF,
 
@@ -116,6 +134,10 @@ window.__BOB__ = {
   setDraftShop, setDraftNote, setItemStatus, setItemComment,
   triggerAuditPhotoInput, handleAuditPhotoChange, removeDraftPhoto,
   saveAuditDraft, deleteAudit,
+
+  setPlanTab, setPlanShopFilter, setPlanRefDate, shiftPlanRef, planToday,
+  openPlanDraft, editPlanShift, cancelPlanDraft,
+  setPlanDraft, savePlanDraft, deletePlanShift,
 };
 
 setBApp(() => bApp());

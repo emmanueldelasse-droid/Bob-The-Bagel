@@ -7,6 +7,7 @@ import { A }            from './state.js';
 import { dDel, render, setBApp } from './utils.js';
 import { isAdmin, canAccessKitchen } from './auth.js';
 import { enterShopAuditContext } from './modules/audit.js';
+import { enterShopPlanningContext } from './modules/planning.js';
 import { bLogin }        from './views/login.js';
 import { bSelect }       from './views/select.js';
 import { bShop }         from './views/shop.js';
@@ -14,7 +15,7 @@ import { bKitchen }      from './views/kitchen.js';
 import { bAdmin }        from './views/admin.js';
 import { bChat }         from './views/chat.js';
 import { bCalendar }     from './views/calendar.js';
-import { bCfm }          from './views/modals.js';
+import { bCfm, bReserve, bNotifCenter } from './views/modals.js';
 
 // ── Router principal ───────────────────────────────────────
 // Injecte bApp dans utils pour éviter la dépendance circulaire
@@ -35,7 +36,9 @@ export function bApp() {
   }
 
   const modal = A.confirm ? bCfm() : '';
-  return content + modal;
+  const reserve = A.reserveDraft ? bReserve() : '';
+  const notifs = A.showNotifs ? bNotifCenter() : '';
+  return content + modal + reserve + notifs;
 }
 
 // ── Navigation ─────────────────────────────────────────────
@@ -84,6 +87,7 @@ export function goAdm() {
 export function sSTb(t)  {
   A.sTab = t;
   if (t === 'audit' && A.selShop?.id) enterShopAuditContext(A.selShop.id);
+  if (t === 'planning' && A.selShop?.id) enterShopPlanningContext(A.selShop.id);
   render();
 }
 export function sKTb(t)  { A.kTab  = t; render(); }

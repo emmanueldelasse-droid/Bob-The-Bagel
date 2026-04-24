@@ -2,15 +2,18 @@
    BOBtheBAGEL — views/admin.js v2
    ============================================================ */
 
-import { A }        from '../state.js';
+import { A, ROLE_LABELS }        from '../state.js';
 import { aP, oCats, fD, fT } from '../utils.js';
 import { bAuditSection } from './audit.js';
+import { bPlanningSection } from './planning.js';
+import { unseenCountForUser } from '../modules/notifications.js';
 
 export function bAdmin() {
   const tabs = [
     { id: 'banner',  label: 'Bannière',    icon: '📢' },
     { id: 'users',   label: 'Utilisateurs',icon: '👥' },
     { id: 'prods',   label: 'Produits',    icon: '🛍' },
+    { id: 'planning',label: 'Planning',    icon: '📆' },
     { id: 'audit',   label: 'Audit',       icon: '🔍' },
     { id: 'actlog',  label: 'Actions',     icon: '📋' },
     { id: 'connlog', label: 'Connexions',  icon: '🔐' },
@@ -21,6 +24,7 @@ export function bAdmin() {
     case 'banner':  content = secBanner();  break;
     case 'users':   content = secUsers();   break;
     case 'prods':   content = secProds();   break;
+    case 'planning':content = bPlanningSection(); break;
     case 'audit':   content = bAuditSection(); break;
     case 'actlog':  content = secActLog();  break;
     case 'connlog': content = secConnLog(); break;
@@ -32,9 +36,17 @@ export function bAdmin() {
       <div class="hdr">
         <div style="display:flex;align-items:center;gap:8px">
           <button class="btn btn-ghost btn-sm" onclick="window.__BOB__.goSel()">← Retour</button>
-          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:var(--red);letter-spacing:.5px">ADMIN</span>
+          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:var(--red);letter-spacing:.5px">MANAGER</span>
         </div>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;align-items:center">
+          ${(() => {
+            const n = unseenCountForUser(A.cUser);
+            return `
+              <button class="btn btn-ghost btn-sm btn-icon" style="position:relative" onclick="window.__BOB__.toggleNotifs()">
+                🔔
+                ${n > 0 ? `<span style="position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;background:var(--red);color:#fff;font-size:10px;font-weight:800;border-radius:8px;display:flex;align-items:center;justify-content:center;line-height:1">${n > 9 ? '9+' : n}</span>` : ''}
+              </button>`;
+          })()}
           <button class="btn btn-ghost btn-sm btn-icon" onclick="window.__BOB__.toggleDark()">◑</button>
           <button class="btn btn-ghost btn-sm btn-icon" onclick="window.__BOB__.logout()">↩</button>
         </div>
@@ -89,9 +101,9 @@ function secUsers() {
             style="border:1.5px solid var(--border);padding:0 12px;height:40px;border-radius:var(--r2);font-size:14px;background:var(--bg2);color:var(--txt);outline:none;width:130px;font-family:'Space Grotesk',sans-serif"
           />
           <select onchange="window.__BOB__.sNU('role',this.value)" class="select" style="height:40px">
-            <option value="user">Boutique</option>
-            <option value="kitchen">Cuisine</option>
-            <option value="admin">Admin</option>
+            <option value="user">Team BTB</option>
+            <option value="kitchen">Kitchen</option>
+            <option value="admin">Manager</option>
           </select>
           <button class="btn btn-primary btn-sm" onclick="window.__BOB__.aU()">Créer</button>
           <button class="btn btn-ghost btn-sm" onclick="window.__BOB__.tAU()">Annuler</button>
@@ -108,7 +120,7 @@ function secUsers() {
               </div>
               <div>
                 <div style="font-weight:600;font-size:14px;color:var(--txt)">${u.name}</div>
-                <div style="font-size:11px;font-weight:700;color:${roleColor};margin-top:1px;font-family:'Syne',sans-serif;letter-spacing:.5px">${u.role.toUpperCase()}</div>
+                <div style="font-size:11px;font-weight:700;color:${roleColor};margin-top:1px;font-family:'Syne',sans-serif;letter-spacing:.5px">${(ROLE_LABELS[u.role] || u.role).toUpperCase()}</div>
               </div>
             </div>
             <button onclick="window.__BOB__.dU('${u.id}')"

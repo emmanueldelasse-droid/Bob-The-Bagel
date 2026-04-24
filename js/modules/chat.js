@@ -170,6 +170,62 @@ function markConversationSeen(convId) {
   const latest = messagesForConv(convId).slice(-1)[0]?.createdAt || nISO();
   A.chatSeen = { ...A.chatSeen, [convId]: latest };
   persistChatSeen();
+  markMessagesReadBy(convId);
+}
+
+function markMessagesReadBy(convId) {
+  const uid = A.cUser?.id;
+  if (!uid || !convId) return;
+  let changed = false;
+  A.messages = A.messages.map((msg) => {
+    if (msg.convId !== convId) return msg;
+    if (msg.senderId === uid) return msg;
+    const readBy = Array.isArray(msg.readBy) ? msg.readBy : [];
+    if (readBy.includes(uid)) return msg;
+    changed = true;
+    return { ...msg, readBy: [...readBy, uid] };
+  });
+  if (!changed) return;
+
+  if (!isTestMode()) {
+    const sb = getSupabase();
+    if (sb) {
+      const ids = A.messages
+        .filter((m) => m.convId === convId && m.senderId !== uid && Array.isArray(m.readBy) && m.readBy.includes(uid))
+        .map((m) => m.id)
+        .filter((id) => typeof id === 'string' && !id.startsWith('local-'));
+      ids.forEach(async (messageId) => {
+        try {
+          const msg = A.messages.find((m) => m.id === messageId);
+          await sb.from('messages').update({ read_by: msg.readBy }).eq('id', messageId);
+        } catch (error) {
+          console.warn('[BOB] read_by update failed:', error);
+        }
+      });
+    }
+  }
+}
+
+export function readersForMessage(message) {
+  const ids = Array.isArray(message?.readBy) ? message.readBy : [];
+  return ids
+    .map((uid) => A.users.find((u) => u.id === uid) || (A.cUser?.id === uid ? A.cUser : null))
+    .filter(Boolean);
+}
+
+export function expectedReadersForConv(convId) {
+  const conv = A.conversations.find((c) => c.id === convId);
+  const senderIds = new Set(A.messages.filter((m) => m.convId === convId).map((m) => m.senderId));
+  const users = A.users.filter((u) => u.role !== 'kitchen' || conv?.type !== 'shop');
+  const union = new Map();
+  users.forEach((u) => union.set(u.id, u));
+  senderIds.forEach((id) => {
+    if (!union.has(id)) {
+      const s = A.users.find((u) => u.id === id);
+      if (s) union.set(id, s);
+    }
+  });
+  return Array.from(union.values());
 }
 
 async function removeChannelSafe(channel) {

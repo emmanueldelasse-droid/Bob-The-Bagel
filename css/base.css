@@ -29,19 +29,20 @@ button { cursor: pointer; }
 ::-webkit-scrollbar { width: 3px; height: 3px; }
 ::-webkit-scrollbar-thumb { background: #00000020; border-radius: 2px; }
 
-/* ── Variables light ── */
+/* ── Variables light (thème BOBtheBAGEL) ── */
 :root {
-  --bg:      #F5F4F0;
-  --bg2:     #FFFFFF;
-  --bg3:     #EDECEA;
+  --bg:      #FFFFFF;
+  --bg2:     #FAF9F6;
+  --bg3:     #EFEDE7;
   --txt:     #0D0D0D;
-  --txt2:    #6B6B6B;
-  --txt3:    #A8A8A8;
-  --accent:  #0D0D0D;
+  --txt2:    #4D4D4D;
+  --txt3:    #9A9A9A;
+  --accent:  #0E4B30;
   --accent2: #FFFFFF;
-  --red:     #E8294B;
-  --green:   #1A7A4A;
-  --lgreen:  #E8F5EE;
+  --red:     #D11A2A;
+  --green:   #0E4B30;
+  --green2:  #0B3B25;
+  --lgreen:  #E3EFE8;
   --amber:   #D97706;
   --blue:    #2563EB;
   --border:  #E2E0DC;
@@ -56,12 +57,14 @@ body.dark {
   --bg2:     #161616;
   --bg3:     #202020;
   --txt:     #F0EEE8;
-  --txt2:    #909090;
+  --txt2:    #A5A5A5;
   --txt3:    #606060;
-  --accent:  #F0EEE8;
+  --accent:  #2F9E66;
   --accent2: #0D0D0D;
-  --green:   #34D399;
-  --lgreen:  #0A2018;
+  --green:   #2F9E66;
+  --green2:  #1F7A4E;
+  --lgreen:  #0E2A1E;
+  --red:     #F05467;
   --amber:   #FCD34D;
   --blue:    #60A5FA;
   --border:  #262626;
@@ -90,20 +93,32 @@ body.dark {
   user-select: none;
 }
 .logo .b1, .logo .b2 {
-  font-family: 'Syne', sans-serif;
-  font-weight: 800;
+  font-family: 'Archivo Black', 'Syne', sans-serif;
+  font-weight: 900;
   color: var(--txt);
-  letter-spacing: -1px;
+  letter-spacing: -1.5px;
+  text-transform: uppercase;
 }
 .logo .th {
-  font-family: 'Dancing Script', cursive;
-  font-weight: 700;
-  color: var(--red);
+  font-family: 'Archivo Black', 'Syne', sans-serif;
+  font-weight: 900;
+  color: var(--green);
   font-size: .82em;
   margin: 0 2px;
+  text-transform: uppercase;
+  letter-spacing: -.5px;
+}
+
+/* ── Typographie display ── */
+.display {
+  font-family: 'Archivo Black', 'Syne', sans-serif;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -.5px;
+  line-height: 1;
 }
 
 /* ── Utilitaires ── */
 .dbl     { opacity:.3; pointer-events:none; }
-.label   { font-family:'Syne',sans-serif; font-weight:700; font-size:10px; letter-spacing:2.5px; text-transform:uppercase; color:var(--txt3); }
+.label   { font-family:'Archivo Black','Syne',sans-serif; font-weight:900; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--txt3); }
 .truncate{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

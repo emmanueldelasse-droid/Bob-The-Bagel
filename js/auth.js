@@ -3,7 +3,7 @@
    Acces test direct + session Supabase existante
    ============================================================ */
 
-import { A, INIT_USERS, sv, resetOrdersRuntime, resetStockRuntime, resetChatRuntime } from './state.js';
+import { A, INIT_USERS, ROLE_LABELS, sv, resetOrdersRuntime, resetStockRuntime, resetChatRuntime } from './state.js';
 import { alog, toast, render, nISO } from './utils.js';
 import {
   getSupabase,
@@ -24,7 +24,7 @@ import { loadAuditsIntoState } from './modules/audit.js';
 
 function buildTestUser(role) {
   const source = A.users.find((user) => user.role === role) || INIT_USERS.find((user) => user.role === role);
-  const fallbackName = role === 'admin' ? 'Admin' : 'User';
+  const fallbackName = ROLE_LABELS[role] || 'User';
 
   return {
     id: source?.id || `test-${role}`,
@@ -87,6 +87,14 @@ function resetTransientState() {
   resetChatRuntime();
 }
 
+function resetLoginFlow() {
+  A.loginStep = 'profile';
+  A.loginRole = null;
+  A.loginIdent = '';
+  A.loginPwd = '';
+  A.loginError = '';
+}
+
 async function enterTestProfile(role) {
   const safeRole = role === 'admin' ? 'admin' : 'user';
   const user = buildTestUser(safeRole);
@@ -97,6 +105,7 @@ async function enterTestProfile(role) {
   A.lLocked = false;
   A.cUser = user;
   resetTransientState();
+  resetLoginFlow();
   logConnection(`${user.name} (test)`);
   alog(`Acces test: ${user.name}`);
   openDefaultView(safeRole);
@@ -109,6 +118,33 @@ export async function dLog(role = 'user') {
   await enterTestProfile(role);
 }
 
+export function pickLoginRole(role) {
+  const safeRole = role === 'admin' ? 'admin' : 'user';
+  A.loginRole = safeRole;
+  A.loginStep = 'credentials';
+  A.loginIdent = '';
+  A.loginPwd = '';
+  A.loginError = '';
+  render();
+}
+
+export function setLoginField(field, value) {
+  if (field === 'ident') A.loginIdent = value;
+  else if (field === 'pwd') A.loginPwd = value;
+  A.loginError = '';
+}
+
+export function backToLoginProfile() {
+  resetLoginFlow();
+  render();
+}
+
+export async function submitLogin() {
+  const role = A.loginRole === 'admin' ? 'admin' : 'user';
+  await clearRemoteSession();
+  await enterTestProfile(role);
+}
+
 export async function logout() {
   await clearRemoteSession();
 
@@ -116,6 +152,7 @@ export async function logout() {
   A.testProfile = null;
   sv('tp', null);
   A.view = 'login';
+  resetLoginFlow();
   resetTransientState();
   render();
 }
