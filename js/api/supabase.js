@@ -272,13 +272,28 @@ export async function upsertShop(shop) {
   const hasServerId = isUuidLike(shop.id);
   const payload = compactObject({
     id: hasServerId ? shop.id : undefined,
-    slug: shop.slug || (hasServerId ? undefined : shop.id) || null,
+    slug: shop.slug || (hasServerId ? undefined : null),
     name: shop.name,
     color: shop.color || '#0E4B30',
     is_active: shop.isActive !== false,
   });
-  const query = sb.from('shops').upsert(payload, { onConflict: hasServerId ? 'id' : 'slug' }).select('*').single();
-  const { data, error } = await query;
+
+  let data;
+  let error;
+  if (hasServerId) {
+    // Update / upsert par id existant.
+    ({ data, error } = await sb.from('shops').upsert(payload, { onConflict: 'id' }).select('*').single());
+  } else if (payload.slug) {
+    // Creation : tente insert, et si le slug est deja pris, fallback sur update.
+    ({ data, error } = await sb.from('shops').insert(payload).select('*').single());
+    if (error && (error.code === '23505' || /duplicate/i.test(error.message || ''))) {
+      const patch = { name: payload.name, color: payload.color, is_active: payload.is_active };
+      ({ data, error } = await sb.from('shops').update(patch).eq('slug', payload.slug).select('*').single());
+    }
+  } else {
+    // Fallback : insert sans slug (Supabase generera l'id)
+    ({ data, error } = await sb.from('shops').insert(payload).select('*').single());
+  }
   if (error) throw error;
   return normalizeShopRow(data);
 }
