@@ -107,15 +107,36 @@ export function cxSum() {
   render();
 }
 
+function resolveShopUuid(selShop) {
+  if (!selShop?.id) return null;
+  const isUuid = typeof selShop.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selShop.id);
+  if (isUuid) return selShop.id;
+  // selShop.id est un slug/texte → on cherche dans A.shops si un des shops a ce slug/name
+  const match = (A.shops || []).find((s) => {
+    const sid = String(s.id || '');
+    const sslug = String(s.slug || '');
+    return sid === selShop.id || sslug === selShop.id || (s.name && s.name === selShop.name);
+  });
+  if (match && typeof match.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(match.id)) {
+    return match.id;
+  }
+  return null;
+}
+
 export async function sbO() {
   const s = A.summary;
   if (!s) return;
 
   const sh = A.selShop;
+  const resolvedShopUuid = resolveShopUuid(sh);
+  if (!resolvedShopUuid) {
+    toast('Boutique non synchronisée. Actualise la page puis réessaie.', 'error');
+    return;
+  }
   const now = currentTimestamp();
   const order = {
     id: gId('CMD'),
-    shopId: sh.id,
+    shopId: resolvedShopUuid,
     shopName: sh.name,
     shopColor: sh.color,
     items: s.items,
