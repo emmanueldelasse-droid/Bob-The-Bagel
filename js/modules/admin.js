@@ -189,15 +189,18 @@ export async function aShop() {
 
 export function dShop(id) {
   if (A.selShop?.id === id) { toast('Quitter la boutique d\'abord', 'warn'); return; }
+  const looksLikeUuid = typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
   A.confirm = {
     msg: 'Supprimer cette boutique ?',
     fn: async () => {
       A.shops = (A.shops || []).filter((s) => s.id !== id);
       sv('sh', A.shops);
-      try {
-        await deleteShopApi(id);
-      } catch (error) {
-        console.warn('[BOB] deleteShop failed:', error);
+      if (looksLikeUuid) {
+        try {
+          await deleteShopApi(id);
+        } catch (error) {
+          console.warn('[BOB] deleteShop failed:', error);
+        }
       }
       alog(`Boutique supprimée: ${id}`);
       toast('Supprimée', 'error');

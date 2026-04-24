@@ -251,6 +251,58 @@ export function deletePlanShift(id) {
   render();
 }
 
+// Trouve les shifts "soeurs" (meme personne, memes horaires, meme boutique) dans
+// la semaine de reference — utilise pour proposer la suppression en serie.
+export function siblingShiftsForDraft() {
+  const d = A.planDraft;
+  if (!d?.id) return [];
+  const refDate = d.date;
+  if (!refDate) return [];
+  const days = weekRange(refDate);
+  const from = days[0];
+  const to = days[6];
+  const staffKey = (d.staffName || '').trim().toLowerCase();
+  if (!staffKey) return [];
+  return (A.planning || []).filter((s) => {
+    if (s.id === d.id) return false;
+    if (s.shopId !== d.shopId) return false;
+    if ((s.staffName || '').trim().toLowerCase() !== staffKey) return false;
+    if (s.start !== d.start || s.end !== d.end) return false;
+    if (s.date < from || s.date > to) return false;
+    return true;
+  });
+}
+
+export function deletePlanSeries() {
+  const d = A.planDraft;
+  if (!d?.id) return;
+  const siblings = siblingShiftsForDraft();
+  const all = [d, ...siblings];
+  if (!all.length) return;
+
+  A.confirm = {
+    msg: `Supprimer les ${all.length} shifts de ${d.staffName} cette semaine ?`,
+    fn: async () => {
+      for (const s of all) {
+        try {
+          await deletePlanningShiftApi(s.id);
+        } catch (error) {
+          console.warn('[BOB] deletePlanSeries remote failed for one:', error);
+        }
+      }
+      const ids = new Set(all.map((s) => s.id));
+      A.planning = (A.planning || []).filter((s) => !ids.has(s.id));
+      persist();
+      A.planDraft = null;
+      alog(`Planning serie suppr: ${d.staffName} (${all.length})`);
+      toast(`${all.length} shifts supprimés`, 'error');
+      A.confirm = null;
+      render();
+    },
+  };
+  render();
+}
+
 export { loadPlanningIntoState };
 
 export function shiftsForShop(shopId, fromIso, toIso) {

@@ -5,7 +5,7 @@
 
 import { A } from '../state.js';
 import { isAdmin } from '../auth.js';
-import { shiftsForShop, weekRange, monthRange, SHIFT_ROLES } from '../modules/planning.js';
+import { shiftsForShop, weekRange, monthRange, SHIFT_ROLES, siblingShiftsForDraft } from '../modules/planning.js';
 import { fDl } from '../utils.js';
 
 function shopColor(shopId) {
@@ -184,9 +184,17 @@ function draftForm() {
           oninput="window.__BOB__.setPlanDraft('note',this.value)">${d.note || ''}</textarea>
       </div>
 
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="window.__BOB__.savePlanDraft()">${d.id ? 'Enregistrer' : 'Ajouter'}</button>
         <button class="btn btn-ghost" onclick="window.__BOB__.cancelPlanDraft()">Annuler</button>
+        ${d.id ? `
+          <button class="btn btn-ghost" style="color:var(--red);border-color:var(--red);margin-left:auto" onclick="window.__BOB__.deletePlanShift('${d.id}')">Supprimer ce jour</button>
+          ${(() => {
+            const siblings = siblingShiftsForDraft();
+            if (!siblings.length) return '';
+            return `<button class="btn btn-ghost" style="color:var(--red);border-color:var(--red);background:var(--red)11" onclick="window.__BOB__.deletePlanSeries()">Supprimer la série (${siblings.length + 1} jours)</button>`;
+          })()}
+        ` : ''}
       </div>
     </div>`;
 }
