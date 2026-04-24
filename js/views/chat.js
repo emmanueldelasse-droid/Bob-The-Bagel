@@ -341,5 +341,5 @@ export function bChat() {
 export function chatBadge() {
   const n = totalUnread();
   if (n === 0) return '';
-  return `<span style="background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px;vertical-align:middle">${n > 9 ? '9+' : n}</span>`;
+  return `<span class="badge-pulse" style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;background:var(--red);color:#fff;font-size:11px;font-weight:800;padding:0 5px;border-radius:9px;margin-left:6px;line-height:1;outline:2px solid var(--bg2)">${n > 99 ? '99+' : n}</span>`;
 }

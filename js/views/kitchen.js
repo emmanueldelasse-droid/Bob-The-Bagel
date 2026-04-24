@@ -7,6 +7,7 @@ import { aP, oCats, gP, fD, fT, fDl } from '../utils.js';
 import { isAdmin } from '../auth.js';
 import { bChat, chatBadge } from './chat.js';
 import { bCalendar, calBadge, calDashboardWidget } from './calendar.js';
+import { unseenCountForUser } from '../modules/notifications.js';
 import { bPlanningSection } from './planning.js';
 import { totalUnread } from '../modules/chat.js';
 import { getLowStock } from '../modules/stock.js';
@@ -417,7 +418,7 @@ export function bKitchen() {
         <div class="tabs" style="background:transparent;border-color:rgba(255,255,255,.1)">
           ${tabs.map(t => `
             <button class="tab kitchen-tab${A.kTab === t.id ? ' on' : ''}" onclick="window.__BOB__.sKTb('${t.id}')">
-              ${t.icon} ${t.label}
+              ${t.icon} ${t.label}${t.id === 'chat' ? chatBadge() : t.id === 'calendar' ? calBadge() : ''}
             </button>
           `).join('')}
         </div>
