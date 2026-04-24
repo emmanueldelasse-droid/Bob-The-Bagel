@@ -628,6 +628,30 @@ export function setChatInput(v) {
   else broadcastTyping(false);
 }
 
+export function toggleMentionPicker() {
+  A.mentionPickerOpen = !A.mentionPickerOpen;
+  render();
+}
+
+export function insertMention(token) {
+  if (!token) return;
+  const current = A.chatInput || '';
+  const trimmed = current.replace(/\s+$/, '');
+  const sep = trimmed.length ? ' ' : '';
+  A.chatInput = `${trimmed}${sep}${token} `;
+  A.mentionPickerOpen = false;
+  render();
+  setTimeout(() => {
+    const input = document.getElementById('chat-input');
+    if (input) {
+      input.focus();
+      if (typeof input.setSelectionRange === 'function') {
+        input.setSelectionRange(A.chatInput.length, A.chatInput.length);
+      }
+    }
+  }, 20);
+}
+
 function broadcastTyping(isTyping) {
   const sb = getSupabase();
   if (!sb || !_presenceChannel || isTestMode() || !A.cUser) return;

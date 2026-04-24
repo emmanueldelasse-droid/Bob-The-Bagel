@@ -228,12 +228,49 @@ function typingHint() {
     </div>`;
 }
 
+function mentionPickerPanel(disabled) {
+  if (disabled || !A.mentionPickerOpen) return '';
+  const rolePills = [
+    { token: '@Manager', label: 'Manager', role: 'admin' },
+    { token: '@Team BTB', label: 'Team BTB', role: 'user' },
+  ];
+  const users = (A.users || []).filter((u) => (u.name || '').trim());
+  return `
+    <div style="position:relative">
+      <div style="position:absolute;bottom:6px;left:0;right:0;background:var(--bg2);border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh2);padding:8px;display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch;z-index:30">
+        <div class="label" style="padding:0 4px">Groupes</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${rolePills.map((p) => `<button onclick="window.__BOB__.insertMention('${p.token}')"
+            style="height:32px;padding:0 12px;border-radius:16px;border:1.5px solid ${p.role === 'admin' ? 'var(--red)' : 'var(--green)'};background:${p.role === 'admin' ? 'var(--red)22' : 'var(--green)22'};color:${p.role === 'admin' ? 'var(--red)' : 'var(--green)'};font-size:12px;font-weight:700;cursor:pointer">${p.token}</button>`).join('')}
+        </div>
+        ${users.length ? `
+          <div class="label" style="padding:0 4px;margin-top:4px">Personnes</div>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            ${users.map((u) => {
+              const color = u.role === 'admin' ? 'var(--red)' : u.role === 'kitchen' ? 'var(--amber)' : 'var(--green)';
+              return `<button onclick="window.__BOB__.insertMention('@${(u.name || '').replace(/\\s+/g, ' ').trim()}')"
+                style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:transparent;border:1px solid transparent;border-radius:6px;cursor:pointer;text-align:left"
+                onmouseover="this.style.background='var(--bg3)';this.style.borderColor='var(--border)'"
+                onmouseout="this.style.background='transparent';this.style.borderColor='transparent'">
+                <span style="width:24px;height:24px;border-radius:6px;background:${color};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${escHtml((u.name || '?').charAt(0).toUpperCase())}</span>
+                <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(u.name)}</span>
+                <span style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px">${u.role === 'admin' ? 'Manager' : u.role === 'kitchen' ? 'Cuisine' : 'Team BTB'}</span>
+              </button>`;
+            }).join('')}
+          </div>
+        ` : ''}
+        <button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="window.__BOB__.toggleMentionPicker()">Fermer</button>
+      </div>
+    </div>`;
+}
+
 function inputZone(activeConv) {
   const isUrgent = A.chatPriority === 'urgent';
   const disabled = !activeConv;
 
   return `
     ${typingHint()}
+    ${mentionPickerPanel(disabled)}
     <div style="padding:10px 14px;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:var(--bg2);border-top:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <button
@@ -252,6 +289,12 @@ function inputZone(activeConv) {
           onmouseover="if(!${disabled}){this.style.borderColor='var(--txt)';this.style.color='var(--txt)'}"
           onmouseout="if(!${disabled}){this.style.borderColor='var(--border)';this.style.color='var(--txt2)'}"
         >📎</button>
+        <button
+          onclick="${disabled ? '' : 'window.__BOB__.toggleMentionPicker()'}"
+          title="Mentionner un utilisateur ou un groupe"
+          aria-pressed="${A.mentionPickerOpen ? 'true' : 'false'}"
+          style="width:40px;height:40px;flex-shrink:0;background:${A.mentionPickerOpen ? 'var(--green)22' : 'transparent'};color:${A.mentionPickerOpen ? 'var(--green)' : 'var(--txt2)'};border:1.5px solid ${A.mentionPickerOpen ? 'var(--green)' : 'var(--border)'};border-radius:10px;font-size:16px;font-weight:800;cursor:${disabled ? 'default' : 'pointer'};display:flex;align-items:center;justify-content:center;transition:all .12s;opacity:${disabled ? '.5' : '1'}"
+        >@</button>
 
         <textarea
           id="chat-input"

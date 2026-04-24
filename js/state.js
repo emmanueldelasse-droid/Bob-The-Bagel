@@ -164,6 +164,7 @@ export const A = {
   chatInput:  '',
   chatPriority: 'normal',
   typingUsers: [],
+  mentionPickerOpen: false,
 
   auditTab:       'list',
   auditFilter:    'all',
