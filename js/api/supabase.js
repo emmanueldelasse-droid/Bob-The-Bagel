@@ -207,13 +207,17 @@ export async function upsertProfile(profile) {
   const sb = getSupabase();
   if (!sb) throw new Error('Client Supabase indisponible');
   const payload = compactObject({
-    id: profile.id,
+    id: uuidOrNull(profile.id),
     name: profile.name,
     role: profile.role || 'user',
     photo_url: profile.photo || null,
     email: profile.email || null,
-    shop_ids: profile.shopIds || [],
+    shop_ids: uuidListOrEmpty(profile.shopIds),
   });
+  if (!payload.id) {
+    // pas d'upsert si on n'a pas d'uuid valide (profil local hardcode)
+    return;
+  }
   const { error } = await sb.from('profiles').upsert(payload);
   if (error) throw error;
 }
@@ -252,6 +256,14 @@ export async function loadProfilesIntoState() {
 // ── Shops (Manager CRUD) ───────────────────────────────────
 function isUuidLike(value) {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function uuidOrNull(value) {
+  return isUuidLike(value) ? value : null;
+}
+
+function uuidListOrEmpty(list) {
+  return Array.isArray(list) ? list.filter(isUuidLike) : [];
 }
 
 export async function upsertShop(shop) {
@@ -759,8 +771,8 @@ function planningRowToState(row) {
 function planningStateToRow(shift) {
   return compactObject({
     id: shift.id,
-    shop_id: shift.shopId,
-    staff_id: shift.staffId,
+    shop_id: uuidOrNull(shift.shopId),
+    staff_id: uuidOrNull(shift.staffId),
     staff_name: shift.staffName,
     date: shift.date,
     start_time: shift.start,
@@ -853,9 +865,9 @@ function notifStateToRow(notif) {
     role: notif.role || 'admin',
     title: notif.title,
     body: notif.body,
-    shop_id: notif.shopId || null,
+    shop_id: uuidOrNull(notif.shopId),
     order_id: notif.orderId || null,
-    created_by: notif.createdBy || A.cUser?.id || null,
+    created_by: uuidOrNull(notif.createdBy || A.cUser?.id),
     seen_by: notif.seenBy || {},
     created_at: notif.createdAt,
   });
@@ -966,9 +978,9 @@ function calStateToRow(evt) {
     status: evt.status || 'planned',
     color_tag: evt.colorTag || null,
     event_type: evt.eventType || 'generic',
-    shop_ids: evt.shops || [],
+    shop_ids: uuidListOrEmpty(evt.shops),
     checklist: evt.checklist || [],
-    author_id: evt.authorId || A.cUser?.id || null,
+    author_id: uuidOrNull(evt.authorId || A.cUser?.id),
     author_name: evt.authorName || A.cUser?.name || '',
     updated_at: evt.updatedAt || new Date().toISOString(),
   });
@@ -1027,9 +1039,9 @@ export async function upsertAuditApi(audit) {
   if (!sb) throw new Error('Client Supabase indisponible');
   const payload = compactObject({
     id: audit.id,
-    shop_id: audit.shopId,
+    shop_id: uuidOrNull(audit.shopId),
     shop_name: audit.shopName,
-    auditor_id: audit.auditorId || A.cUser?.id || null,
+    auditor_id: uuidOrNull(audit.auditorId || A.cUser?.id),
     auditor_name: audit.auditorName || A.cUser?.name || '',
     status: audit.status,
     note: audit.note || '',

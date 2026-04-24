@@ -5,7 +5,7 @@
 
 import { A } from '../state.js';
 import { isAdmin } from '../auth.js';
-import { shiftsForShop, weekRange, SHIFT_ROLES } from '../modules/planning.js';
+import { shiftsForShop, weekRange, monthRange, SHIFT_ROLES } from '../modules/planning.js';
 import { fDl } from '../utils.js';
 
 function shopColor(shopId) {
@@ -41,6 +41,8 @@ function controls() {
       <div style="display:flex;gap:4px">
         <button class="tab ${A.planTab === 'week' ? 'on' : ''}" style="font-size:12px;padding:0 12px;height:32px"
           onclick="window.__BOB__.setPlanTab('week')">Semaine</button>
+        <button class="tab ${A.planTab === 'month' ? 'on' : ''}" style="font-size:12px;padding:0 12px;height:32px"
+          onclick="window.__BOB__.setPlanTab('month')">Mois</button>
         <button class="tab ${A.planTab === 'list' ? 'on' : ''}" style="font-size:12px;padding:0 12px;height:32px"
           onclick="window.__BOB__.setPlanTab('list')">Liste</button>
       </div>
@@ -255,6 +257,72 @@ function weekView() {
     </div>`;
 }
 
+function monthView() {
+  const isShopCtx = A.planContext === 'shop';
+  const { days, month, year } = monthRange(A.planRefDate);
+  const from = days[0].iso;
+  const to = days[days.length - 1].iso;
+
+  const filterShop = isShopCtx ? (A.selShop?.id || A.planShop) : A.planShop;
+  const shifts = (A.planning || []).filter((s) => {
+    if (s.date < from || s.date > to) return false;
+    if (filterShop && s.shopId !== filterShop) return false;
+    return true;
+  });
+
+  const byDate = {};
+  shifts.forEach((s) => {
+    if (!byDate[s.date]) byDate[s.date] = [];
+    byDate[s.date].push(s);
+  });
+  Object.values(byDate).forEach((list) => list.sort((a, b) => a.start.localeCompare(b.start)));
+
+  const monthName = new Date(year, month, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const dowLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+  const todayIso = new Date().toISOString().split('T')[0];
+
+  return `
+    <div style="padding:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="window.__BOB__.shiftPlanRef(-30)">‹</button>
+        <div class="display" style="flex:1;font-size:14px;color:var(--txt);text-transform:capitalize">${monthName}</div>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="window.__BOB__.shiftPlanRef(30)">›</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:4px">
+        ${dowLabels.map((l) => `<div style="font-size:10px;font-weight:800;letter-spacing:1px;color:var(--txt3);text-align:center;padding:4px 0;text-transform:uppercase">${l}</div>`).join('')}
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px">
+        ${days.map((d) => {
+          const list = byDate[d.iso] || [];
+          const isToday = d.iso === todayIso;
+          const bg = !d.inMonth ? 'transparent' : (isToday ? 'var(--lgreen)' : 'var(--bg2)');
+          const border = isToday ? 'var(--green)' : 'var(--border)';
+          const color = d.inMonth ? 'var(--txt)' : 'var(--txt3)';
+          const chips = list.slice(0, 3).map((s) => {
+            const shopColor = A.shops?.find((x) => x.id === s.shopId)?.color || 'var(--green)';
+            return `<div style="font-size:10px;padding:2px 4px;border-radius:4px;background:${shopColor}22;color:${shopColor};font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer"
+              onclick="window.__BOB__.editPlanShift('${s.id}')"
+              title="${s.staffName} ${s.start}-${s.end}">${s.start} ${s.staffName}</div>`;
+          }).join('');
+          const more = list.length > 3 ? `<div style="font-size:10px;color:var(--txt3);text-align:center">+${list.length - 3}</div>` : '';
+          return `
+            <div style="min-height:74px;border:1px solid ${border};border-radius:6px;background:${bg};padding:4px;display:flex;flex-direction:column;gap:2px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:11px;font-weight:${isToday ? '800' : '600'};color:${color}">${d.day}</span>
+                ${d.inMonth ? `<button class="btn btn-ghost" style="height:18px;padding:0 4px;min-width:18px;font-size:11px;border:none" onclick="window.__BOB__.setPlanRefDate('${d.iso}');window.__BOB__.setPlanTab('week')" title="Voir cette semaine">→</button>` : ''}
+              </div>
+              ${chips}
+              ${more}
+            </div>`;
+        }).join('')}
+      </div>
+
+      <div style="margin-top:10px;font-size:11px;color:var(--txt3);text-align:center">Clic sur un shift pour l'éditer · flèche → pour ouvrir la semaine dans l'onglet Semaine</div>
+    </div>`;
+}
+
 function listView() {
   const isShopCtx = A.planContext === 'shop';
   const all = (A.planning || []).slice().sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
@@ -280,6 +348,6 @@ export function bPlanningSection() {
   return `
     ${controls()}
     ${draftForm()}
-    ${A.planTab === 'list' ? listView() : weekView()}
+    ${A.planTab === 'list' ? listView() : A.planTab === 'month' ? monthView() : weekView()}
   `;
 }

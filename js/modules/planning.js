@@ -40,8 +40,30 @@ function emptyDraft() {
 }
 
 export function setPlanTab(tab) {
-  A.planTab = tab === 'month' ? 'month' : 'week';
+  const allowed = ['week', 'month', 'list'];
+  A.planTab = allowed.includes(tab) ? tab : 'week';
   render();
+}
+
+export function monthRange(refDateStr) {
+  const ref = new Date(refDateStr);
+  const year = ref.getFullYear();
+  const month = ref.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startOffset = (firstDay.getDay() + 6) % 7; // Monday-based grid
+  const gridStart = new Date(year, month, 1 - startOffset);
+  const days = [];
+  for (let i = 0; i < 42; i += 1) {
+    const d = new Date(gridStart);
+    d.setDate(gridStart.getDate() + i);
+    days.push({
+      iso: d.toISOString().split('T')[0],
+      day: d.getDate(),
+      inMonth: d.getMonth() === month,
+      dow: (d.getDay() + 6) % 7,
+    });
+  }
+  return { month, year, days };
 }
 
 export function setPlanShopFilter(shopId) {
