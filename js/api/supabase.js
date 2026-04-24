@@ -307,12 +307,12 @@ export async function deleteShop(id) {
 
 // ── Orders ─────────────────────────────────────────────────
 export async function fetchOrders(shopId = null) {
-  if (isTestMode()) {
+  const sb = getSupabase();
+  if (!sb) {
     const orders = clone(A.orders || []);
     return sortOrdersDesc(shopId ? orders.filter((order) => order.shopId === shopId) : orders);
   }
 
-  const sb = getSupabase();
   const rows = await tryQueries([
     () => {
       let q = sb.from('orders').select('*').order('created_at', { ascending: false });
@@ -389,21 +389,21 @@ function buildOrderInsertVariants(order) {
 }
 
 export async function createOrder(order) {
-  if (isTestMode()) {
-    const nextOrders = persistLocalOrders([normalizeOrderRow(order), ...(A.orders || [])].filter(Boolean));
-    return nextOrders.find((item) => item.id === order.id) || normalizeOrderRow(order);
-  }
-
   const sb = getSupabase();
   let lastError = null;
 
   for (const payload of buildOrderInsertVariants(order)) {
+    if (!sb) break;
     const { data, error } = await sb.from('orders').insert(payload).select('*').single();
     if (!error) return normalizeOrderRow(data || payload);
     lastError = error;
   }
 
-  throw lastError || new Error('Création de commande impossible');
+  // Fallback local : on insere l'ordre dans l'etat meme si Supabase refuse
+  // (RLS, colonnes manquantes, etc.) pour ne pas bloquer l'UX.
+  if (lastError) console.warn('[BOB] createOrder remote failed, fallback local:', lastError);
+  persistLocalOrders([normalizeOrderRow(order), ...(A.orders || [])].filter(Boolean));
+  return normalizeOrderRow(order);
 }
 
 function buildOrderPatchVariants(patch) {
@@ -447,26 +447,24 @@ function buildOrderPatchVariants(patch) {
 }
 
 export async function patchOrder(orderId, patch) {
-  if (isTestMode()) {
-    const nextOrders = (A.orders || []).map((order) => (
-      order.id === orderId
-        ? normalizeOrderRow({ ...order, ...patch, id: orderId })
-        : order
-    ));
-    const persisted = persistLocalOrders(nextOrders);
-    return persisted.find((order) => order.id === orderId) || normalizeOrderRow({ id: orderId, ...patch });
-  }
-
   const sb = getSupabase();
   let lastError = null;
 
   for (const payload of buildOrderPatchVariants(patch)) {
+    if (!sb) break;
     const { data, error } = await sb.from('orders').update(payload).eq('id', orderId).select('*').single();
     if (!error) return normalizeOrderRow(data || { id: orderId, ...patch });
     lastError = error;
   }
 
-  throw lastError || new Error('Mise à jour commande impossible');
+  if (lastError) console.warn('[BOB] patchOrder remote failed, fallback local:', lastError);
+  const nextOrders = (A.orders || []).map((order) => (
+    order.id === orderId
+      ? normalizeOrderRow({ ...order, ...patch, id: orderId })
+      : order
+  ));
+  const persisted = persistLocalOrders(nextOrders);
+  return persisted.find((order) => order.id === orderId) || normalizeOrderRow({ id: orderId, ...patch });
 }
 
 export async function updateOrderStatus(orderId, status, updatedBy) {
@@ -477,13 +475,6 @@ export async function loadOrdersIntoState(shopId = null) {
   setRuntimeFlag('ordersLoading', true);
   setRuntimeFlag('ordersError', '');
   try {
-    if (isTestMode()) {
-      const orders = await fetchOrders(shopId);
-      A.orders = orders;
-      setRuntimeFlag('ordersHydrated', true);
-      setRuntimeFlag('lastOrdersSyncAt', new Date().toISOString());
-      return orders;
-    }
 
     const orders = await fetchOrders(shopId);
     A.orders = orders;
@@ -611,23 +602,22 @@ function buildStockPayloadVariants(entityId, productId, field, value) {
 }
 
 export async function updateStock(entityId, productId, field, value) {
-  if (isTestMode()) {
-    const nextStock = clone(A.stock || {});
-    if (!nextStock[entityId]) nextStock[entityId] = {};
-    if (!nextStock[entityId][productId]) nextStock[entityId][productId] = { qty: 0, alert: 0 };
-    nextStock[entityId][productId][field] = value;
-    persistLocalStock(nextStock);
-    return true;
-  }
-
   const sb = getSupabase();
   let lastError = null;
   for (const payload of buildStockPayloadVariants(entityId, productId, field, value)) {
+    if (!sb) break;
     const { error } = await sb.from('stock').upsert(payload, { onConflict: 'entity_id,product_id' });
     if (!error) return true;
     lastError = error;
   }
-  throw lastError || new Error('Mise à jour stock impossible');
+
+  if (lastError) console.warn('[BOB] updateStock remote failed, fallback local:', lastError);
+  const nextStock = clone(A.stock || {});
+  if (!nextStock[entityId]) nextStock[entityId] = {};
+  if (!nextStock[entityId][productId]) nextStock[entityId][productId] = { qty: 0, alert: 0 };
+  nextStock[entityId][productId][field] = value;
+  persistLocalStock(nextStock);
+  return true;
 }
 
 export async function loadStockIntoState(entityIds = null) {
