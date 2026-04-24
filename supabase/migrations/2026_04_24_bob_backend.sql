@@ -249,11 +249,14 @@ create policy "auth-upload-reception" on storage.objects
   for insert with check (bucket_id = 'reception-photos' and auth.role() = 'authenticated');
 
 -- ============ REALTIME ==========================================
--- Activer les publications realtime (a faire aussi depuis l'UI Supabase)
-alter publication supabase_realtime add table public.planning;
-alter publication supabase_realtime add table public.notifications;
-alter publication supabase_realtime add table public.calendar_events;
-alter publication supabase_realtime add table public.audits;
+-- Activer les publications realtime (idempotent)
+do $$
+begin
+  begin alter publication supabase_realtime add table public.planning;        exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.notifications;   exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.calendar_events; exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.audits;          exception when duplicate_object then null; end;
+end $$;
 
 -- ============ NOTES =============================================
 -- 1) Les droits par boutique (I1) ne sont pas encore appliques ici car
