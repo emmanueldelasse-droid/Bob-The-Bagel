@@ -15,6 +15,7 @@ let _conversationsChannel = null;
 let _presenceChannel = null;
 let _presenceConvId = null;
 let _typingClearTimer = null;
+let _typingThrottleAt = 0;
 const chatDebounceRef = { current: null };
 
 function isTestMode() {
@@ -50,7 +51,7 @@ function persistChatSeen() {
   sv('chat_seen', A.chatSeen);
 }
 
-const MENTION_REGEX = /@([\p{L}0-9][\p{L}0-9 _-]{0,23})/gu;
+const MENTION_REGEX = /@([\p{L}0-9][\p{L}0-9_-]{0,23})/gu;
 
 export function parseMentions(text) {
   if (!text) return [];
@@ -82,8 +83,13 @@ export function parseMentions(text) {
 function notifyMentions(message, mentions, convLabel) {
   if (!mentions.length) return;
   const sender = message.senderName || '?';
+  const senderId = A.cUser?.id;
+  const senderRole = A.cUser?.role;
   const rolesTargeted = new Set();
   mentions.forEach((m) => {
+    if (m.id === senderId) return;
+    if (m.id === '@manager' && senderRole === 'admin') return;
+    if (m.id === '@user' && senderRole === 'user') return;
     const body = `${sender} · ${convLabel || 'Chat'}\n${message.content}`.slice(0, 400);
     if (m.id === '@manager') {
       if (rolesTargeted.has('admin')) return;
@@ -625,6 +631,15 @@ export function setChatInput(v) {
 function broadcastTyping(isTyping) {
   const sb = getSupabase();
   if (!sb || !_presenceChannel || isTestMode() || !A.cUser) return;
+
+  const now = Date.now();
+  if (isTyping && now - _typingThrottleAt < 800) {
+    clearTimeout(_typingClearTimer);
+    _typingClearTimer = setTimeout(() => broadcastTyping(false), 4000);
+    return;
+  }
+  if (isTyping) _typingThrottleAt = now;
+
   try {
     _presenceChannel.track({
       userId: A.cUser.id,
@@ -639,6 +654,8 @@ function broadcastTyping(isTyping) {
   if (isTyping) {
     clearTimeout(_typingClearTimer);
     _typingClearTimer = setTimeout(() => broadcastTyping(false), 4000);
+  } else {
+    _typingThrottleAt = 0;
   }
 }
 
@@ -647,11 +664,14 @@ async function ensurePresenceChannel(convId) {
   if (!sb || !convId || isTestMode()) return;
   if (_presenceChannel && _presenceConvId === convId) return;
 
-  if (_presenceChannel) {
-    try { await sb.removeChannel(_presenceChannel); } catch { /* ignore */ }
-    _presenceChannel = null;
-  }
   _presenceConvId = convId;
+  const oldChannel = _presenceChannel;
+  _presenceChannel = null;
+  if (oldChannel) {
+    try { await sb.removeChannel(oldChannel); } catch { /* ignore */ }
+  }
+  // Guard against another selectConv racing us while we awaited above.
+  if (_presenceConvId !== convId) return;
 
   _presenceChannel = sb.channel(`chat-presence-${convId}`, {
     config: { presence: { key: A.cUser?.id || `anon-${Math.random().toString(36).slice(2, 8)}` } },

@@ -10,13 +10,13 @@
 - Repo : `emmanueldelasse-droid/Bob-The-Bagel`
 - Branche : `main`
 - Déploiement : Vercel
-- Dernière mise à jour : 2026-04-24
+- Dernière mise à jour : 2026-04-24 (soir, commits A/B/C)
 - Dernière IA : Claude (Opus 4.7)
 
 ## 2) RÉSUMÉ ULTRA-COURT
 - Runtime réel : app statique `index.html` + modules JS ES6, **pas React**.
-- Backend cible : Supabase comme **source de vérité unique**.
-- État réel : commandes, stock et chat sont branchés à Supabase avec hydratation, synchro live et états UI visibles ; en mode test local, commandes, stock ET chat retombent en local. Les profils sont renommés Team BTB (user) et Manager (admin). Flow login en 2 étapes : choix profil → stub identifiant/mot de passe → select boutique. Le Manager est un superset de Team BTB + tâches admin (planning équipe, audit, stock, produits, bannière). Nouveau module planning personnel par boutique (admin + onglet contextuel shop). Réserve à la réception de commande avec notification Manager (pastille cloche dans headers). Chat : read receipts (vu par qui, initiales). Thème adapté au site bobthebagel.com (vert brand `#0E4B30`, police display Archivo Black).
+- Backend : Supabase = source de vérité unique pour orders, stock, chat, shops, profiles, planning, notifications, calendar, audits (fallback local si échec). Pas de mode test explicite côté UI ; login simplifié à un choix de profil (Team BTB / Manager) en attendant le branchement Supabase Auth.
+- État réel : flow = boot → profil (Team BTB / Manager) → select boutique → app. Manager = superset (planning équipe, audit, CRUD boutiques, CRUD profils, dashboard réserves, CRUD produits, bannière, logs). Team BTB gère commandes, stock, chat, calendrier, planning (lecture), réserves à la réception. Chat : read receipts + @mentions + typing presence. Thème brand `#0E4B30` + Archivo Black.
 
 ## 3) ÉTAT ACTUEL RÉEL
 ### Ce qui existe déjà
@@ -110,7 +110,7 @@
 - `js/modules/notifications.js`
 
 ## 7) PROCHAINE ACTION UNIQUE
-**NEXT_ACTION** : brancher le mot de passe profil sur Supabase Auth après les tests (G1, P0), puis provisionner les tables `planning`, `notifications`, `audits` + bucket `audit-photos` (RLS Manager) et appliquer les droits par boutique (I1).
+**NEXT_ACTION** : appliquer la migration `supabase/migrations/2026_04_24_bob_backend.sql` dans la console Supabase (tables planning / notifications / calendar_events / audits, ALTER profiles/shops, 3 buckets, policies RLS, publication realtime), puis brancher Supabase Auth (G1). I1 (droits par boutique) se débloque dès que Auth est en place — le front a déjà `profiles.shop_ids`.
 
 ## 8) BLOCAGES / RISQUES
 - App encore hybride = comportement non totalement fiable en multi-utilisateur réel
@@ -149,7 +149,14 @@
 | T1 | Réserve sur réception commande + notif Manager | DONE | P1 | Anomalie/manquant tracée et remontée |
 | U1 | Pastilles notifications (cloche) + read receipts chat | DONE | P1 | Visibilité non lus / qui a lu quoi |
 | V1 | Adapter thème au site bobthebagel.com (vert brand + Archivo Black) | DONE | P2 | Cohérence de marque |
-| W1 | Brancher planning / réserve / notifications sur Supabase | TODO | P1 | Fin du mode local pour ces modules |
+| W1 | Brancher planning / réserve / notifications sur Supabase | DONE | P1 | Fin du mode local pour ces modules |
+| X1 | Brancher calendar_events sur Supabase | DONE | P1 | Calendrier partagé multi-user |
+| Y1 | CRUD profils et boutiques côté Manager (Supabase) | DONE | P1 | Gestion équipe et boutiques sans dev |
+| Z1 | Photo à la réception (bucket reception-photos) + dashboard réserves Manager | DONE | P1 | Anomalies traçables avec preuves |
+| AA1 | Notifications Team BTB sur changement statut commande | DONE | P1 | Team BTB informée au fil de la cuisine |
+| AB1 | @mentions chat + typing presence | DONE | P2 | Chat réactif multi-user |
+| AC1 | Copier une semaine de planning sur la suivante | DONE | P2 | Moins de ressaisie Manager |
+| AD1 | Appliquer migration SQL `2026_04_24_bob_backend.sql` dans Supabase | TODO | P0 | Les helpers arrêtent de retomber en local |
 
 ## 10) DERNIÈRES DÉCISIONS VALIDÉES
 - Runtime officiel de reprise = app actuelle HTML/JS modulaire
@@ -170,9 +177,12 @@
 - Audit contextuel : un onglet 🔍 Audit apparaît dans la vue boutique uniquement si l'utilisateur est admin. En contexte "shop" (`A.auditContext = 'shop'`), la liste est filtrée sur `A.selShop`, les filtres inter-boutiques sont masqués et le dropdown boutique de l'édition est remplacé par une puce figée. Le panneau admin garde la vue audit globale (`A.auditContext = 'admin'`) avec filtres + bouton par boutique.
 
 ## 11) DERNIÈRE SESSION
-- Date : 2026-04-24
+- Date : 2026-04-24 (soir)
 - IA : Claude (Opus 4.7)
-- Fait : renommage profils (User → Team BTB, Admin → Manager) + flow login en 2 étapes (profil → identifiant stub → select) + section Planning personnel (module + vue + tab admin + tab contextuel shop, CRUD Manager) + adaptation thème bobthebagel.com (vert brand `#0E4B30`, police Archivo Black display, fond clair) + réserve sur réception commande (Team BTB signale manquant/anomalie avec delta qty + note) + centre de notifications Manager avec cloche + badge unseen + sheet dédiée + pastille `Commandes` pour attente réception + read receipts chat (vu par N/M, initiales)
+- 3 commits successifs sur `claude/review-project-status-wHwcM` :
+  - **A** `125f566` : SQL migration (planning / notifications / calendar_events / audits / ALTER orders.reservation / 3 buckets / RLS / realtime), Supabase adapters (loadX + upsert + delete), hydratation au login, login simplifié un step, nettoyage mentions "test", fixes mobile (viewport sans user-scalable=no, inputs 16px, btn-icon 44×44, -webkit-overflow-scrolling touch, 100dvh, safe-area)
+  - **B** `e6feddb` : CRUD profils Supabase (upsertProfile/deleteProfile + toggleUserShop) + CRUD boutiques (upsertShop/deleteShop/setShopColor) + section admin "Boutiques" + dashboard "Réserves" (Manager) + photo à la réception (bucket reception-photos, fallback data URL, max 6 photos) + notifications Team BTB sur validé/refusé/préparation/livraison + fixes mobile surfacés (chips 36px, photo remove ✕ 32×32, palette 36×36)
+  - **C** `859c18b` : @mentions chat (parseMentions \p{L} + pills colorés + notif ciblée role) + typing indicator via Supabase presence (broadcast sur setChatInput, auto-clear 4s, 6×6 dots, ellipsis noms longs, safe-area-inset-bottom) + copie semaine planning (duplicateWeekToNext) + fixes code-review (slugify NFKD + æ/ø/œ/ß, compressImageToDataUrl pour fallback photo, ALTER TABLE profiles/shops dans migration, escHtml sur URLs photos, early return setShopColor)
 - Fichiers inspectés : `SESSION.md`, `index.html`, `js/state.js`, `js/auth.js`, `js/router.js`, `js/utils.js`, `js/views/login.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/admin.js`, `js/views/chat.js`, `js/views/modals.js`, `js/views/calendar.js`, `js/modules/chat.js`, `js/modules/admin.js`, `js/modules/orders.js`, `js/modules/calendar.js`, `css/base.css`, `css/components.css`, `css/layout.css`
 - Fichiers modifiés : `js/state.js`, `js/auth.js`, `js/router.js`, `js/views/login.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/admin.js`, `js/views/chat.js`, `js/views/modals.js`, `js/modules/chat.js`, `js/modules/admin.js`, `js/modules/orders.js`, `css/base.css`, `css/components.css`, `css/layout.css`, `index.html`, `SESSION.md`
 - Fichiers créés : `js/modules/planning.js`, `js/views/planning.js`, `js/modules/notifications.js`

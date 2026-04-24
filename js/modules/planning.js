@@ -244,8 +244,10 @@ export async function duplicateWeekToNext() {
           console.warn('[BOB] duplicateWeek remote failed for one shift:', error);
         }
       }
+      A.confirm = null;
       toast(`Semaine copiée · ${clones.length} shifts (${remoteOk} remote OK)`);
       alog(`Planning duplique semaine: ${clones.length} shifts`);
+      render();
     },
   };
   render();
