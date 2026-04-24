@@ -32,7 +32,7 @@ alter table if exists public.shops
 -- ============ PLANNING ==========================================
 create table if not exists public.planning (
   id           text primary key,
-  shop_id      text references public.shops(id) on delete cascade,
+  shop_id      uuid references public.shops(id) on delete cascade,
   staff_id     uuid references public.profiles(id) on delete set null,
   staff_name   text        not null,
   date         date        not null,
@@ -79,7 +79,7 @@ create table if not exists public.notifications (
   role         text        not null default 'admin',
   title        text        not null,
   body         text        not null default '',
-  shop_id      text references public.shops(id) on delete set null,
+  shop_id      uuid references public.shops(id) on delete set null,
   order_id     text,
   created_by   uuid references public.profiles(id) on delete set null,
   seen_by      jsonb       not null default '{}'::jsonb,
@@ -171,7 +171,7 @@ create policy calendar_delete_manager on public.calendar_events
 -- ============ AUDITS ============================================
 create table if not exists public.audits (
   id            text primary key,
-  shop_id       text references public.shops(id) on delete set null,
+  shop_id       uuid references public.shops(id) on delete set null,
   shop_name     text not null default '',
   auditor_id    uuid references public.profiles(id) on delete set null,
   auditor_name  text not null default '',
