@@ -7,6 +7,7 @@
 
 import { A, sv } from '../state.js';
 import { gId, toast, render, alog, nISO } from '../utils.js';
+import { loadPlanningIntoState, upsertPlanningShift, deletePlanningShiftApi } from '../api/supabase.js';
 
 export const SHIFT_ROLES = [
   'Ouverture',
@@ -102,7 +103,7 @@ export function setPlanDraft(field, value) {
   }
 }
 
-export function savePlanDraft() {
+export async function savePlanDraft() {
   const d = A.planDraft;
   if (!d) return;
   if (!d.shopId) { toast('Boutique requise', 'error'); return; }
@@ -125,14 +126,26 @@ export function savePlanDraft() {
     updatedAt: nISO(),
   };
 
-  if (d.id) {
-    A.planning = A.planning.map((s) => (s.id === d.id ? payload : s));
-    alog(`Planning maj: ${staffName} ${d.date}`);
-    toast('Shift mis a jour');
-  } else {
-    A.planning = [...A.planning, payload];
-    alog(`Planning ajout: ${staffName} ${d.date}`);
-    toast('Shift ajoute');
+  try {
+    const saved = await upsertPlanningShift(payload);
+    const next = saved || payload;
+    if (d.id) {
+      A.planning = A.planning.map((s) => (s.id === d.id ? next : s));
+      alog(`Planning maj: ${staffName} ${d.date}`);
+      toast('Shift mis a jour');
+    } else {
+      A.planning = [...(A.planning || []), next];
+      alog(`Planning ajout: ${staffName} ${d.date}`);
+      toast('Shift ajoute');
+    }
+  } catch (error) {
+    console.warn('[BOB] savePlanDraft remote failed, fallback local:', error);
+    if (d.id) {
+      A.planning = A.planning.map((s) => (s.id === d.id ? payload : s));
+    } else {
+      A.planning = [...(A.planning || []), payload];
+    }
+    toast('Shift enregistré (hors ligne)', 'warn');
   }
   persist();
   A.planDraft = null;
@@ -142,7 +155,12 @@ export function savePlanDraft() {
 export function deletePlanShift(id) {
   A.confirm = {
     msg: 'Supprimer ce shift ?',
-    fn: () => {
+    fn: async () => {
+      try {
+        await deletePlanningShiftApi(id);
+      } catch (error) {
+        console.warn('[BOB] deletePlanShift remote failed:', error);
+      }
       A.planning = (A.planning || []).filter((s) => s.id !== id);
       persist();
       alog(`Planning suppr: ${id}`);
@@ -152,6 +170,8 @@ export function deletePlanShift(id) {
   };
   render();
 }
+
+export { loadPlanningIntoState };
 
 export function shiftsForShop(shopId, fromIso, toIso) {
   return (A.planning || []).filter((s) => {

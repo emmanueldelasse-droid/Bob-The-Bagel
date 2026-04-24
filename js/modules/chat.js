@@ -27,7 +27,7 @@ function ensureLocalGeneralConv() {
   const local = {
     id: 'local-general',
     type: 'general',
-    label: 'Général (test)',
+    label: 'Général',
     orderId: null,
     shopId: null,
     icon: '📢',
@@ -491,7 +491,7 @@ export async function sendChatPhoto(file) {
         if (feed) feed.scrollTop = feed.scrollHeight;
       }, 50);
     } catch (error) {
-      console.warn('[BOB] sendChatPhoto (test):', error);
+      console.warn('[BOB] sendChatPhoto local:', error);
       toast('Envoi photo impossible', 'error');
     }
     return;

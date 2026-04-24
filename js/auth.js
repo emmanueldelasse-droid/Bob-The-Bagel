@@ -1,6 +1,6 @@
 /* ============================================================
    BOBtheBAGEL - js/auth.js
-   Acces test direct + session Supabase existante
+   Selection de profil (Supabase Auth sera branche a la fin des tests)
    ============================================================ */
 
 import { A, INIT_USERS, ROLE_LABELS, sv, resetOrdersRuntime, resetStockRuntime, resetChatRuntime } from './state.js';
@@ -12,8 +12,13 @@ import {
   loadOrdersIntoState,
   loadStockIntoState,
   loadShopsIntoState,
+  loadPlanningIntoState,
+  loadNotificationsIntoState,
+  loadCalendarIntoState,
   startRealtimeSync,
   stopRealtimeSync,
+  startExtraRealtime,
+  stopExtraRealtime,
 } from './api/supabase.js';
 import {
   loadChatIntoState,
@@ -61,14 +66,24 @@ async function startAuthenticatedApp() {
   await loadStockIntoState();
   await loadChatIntoState();
   await loadAuditsIntoState();
+  await loadPlanningIntoState();
+  await loadNotificationsIntoState();
+  await loadCalendarIntoState();
   await startRealtimeSync();
   await startChatRealtimeSync();
+  await startExtraRealtime({
+    planning: async () => { await loadPlanningIntoState(); render(); },
+    notifications: async () => { await loadNotificationsIntoState(); render(); },
+    events: async () => { await loadCalendarIntoState(); render(); },
+    audits: async () => { await loadAuditsIntoState(); render(); },
+  });
 }
 
 async function clearRemoteSession() {
   try {
     await stopChatRealtimeSync();
     await stopRealtimeSync();
+    await stopExtraRealtime();
     await signOut();
   } catch (error) {
     console.warn('[BOB] clearRemoteSession:', error);
@@ -87,15 +102,7 @@ function resetTransientState() {
   resetChatRuntime();
 }
 
-function resetLoginFlow() {
-  A.loginStep = 'profile';
-  A.loginRole = null;
-  A.loginIdent = '';
-  A.loginPwd = '';
-  A.loginError = '';
-}
-
-async function enterTestProfile(role) {
+async function enterProfile(role) {
   const safeRole = role === 'admin' ? 'admin' : 'user';
   const user = buildTestUser(safeRole);
 
@@ -105,9 +112,8 @@ async function enterTestProfile(role) {
   A.lLocked = false;
   A.cUser = user;
   resetTransientState();
-  resetLoginFlow();
-  logConnection(`${user.name} (test)`);
-  alog(`Acces test: ${user.name}`);
+  logConnection(user.name);
+  alog(`Acces: ${user.name}`);
   openDefaultView(safeRole);
   await startAuthenticatedApp();
   render();
@@ -115,34 +121,7 @@ async function enterTestProfile(role) {
 
 export async function dLog(role = 'user') {
   await clearRemoteSession();
-  await enterTestProfile(role);
-}
-
-export function pickLoginRole(role) {
-  const safeRole = role === 'admin' ? 'admin' : 'user';
-  A.loginRole = safeRole;
-  A.loginStep = 'credentials';
-  A.loginIdent = '';
-  A.loginPwd = '';
-  A.loginError = '';
-  render();
-}
-
-export function setLoginField(field, value) {
-  if (field === 'ident') A.loginIdent = value;
-  else if (field === 'pwd') A.loginPwd = value;
-  A.loginError = '';
-}
-
-export function backToLoginProfile() {
-  resetLoginFlow();
-  render();
-}
-
-export async function submitLogin() {
-  const role = A.loginRole === 'admin' ? 'admin' : 'user';
-  await clearRemoteSession();
-  await enterTestProfile(role);
+  await enterProfile(role);
 }
 
 export async function logout() {
@@ -152,7 +131,6 @@ export async function logout() {
   A.testProfile = null;
   sv('tp', null);
   A.view = 'login';
-  resetLoginFlow();
   resetTransientState();
   render();
 }
@@ -177,7 +155,8 @@ export async function restoreSession() {
 
     if (A.testProfile) {
       A.cUser = buildTestUser(A.testProfile);
-      openDefaultView(A.testProfile);
+      A.selShop = null;
+      A.view = 'select';
       await startAuthenticatedApp();
       return true;
     }

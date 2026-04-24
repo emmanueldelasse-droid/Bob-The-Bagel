@@ -148,12 +148,6 @@ export const A = {
   testProfile: ld('tp', null),
   selShop: null,
 
-  loginStep: 'profile',
-  loginRole: null,
-  loginIdent: '',
-  loginPwd:   '',
-  loginError: '',
-
   sTab:  'order',
   kTab:  'orders',
   sCat:  'PAINS',
@@ -229,6 +223,18 @@ export const A = {
     auditsHydrated: false,
     auditsError: '',
     lastAuditsSyncAt: null,
+    planningLoading: false,
+    planningHydrated: false,
+    planningError: '',
+    lastPlanningSyncAt: null,
+    notifsLoading: false,
+    notifsHydrated: false,
+    notifsError: '',
+    lastNotifsSyncAt: null,
+    eventsLoading: false,
+    eventsHydrated: false,
+    eventsError: '',
+    lastEventsSyncAt: null,
   },
 };
 

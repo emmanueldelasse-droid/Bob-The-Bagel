@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>BOBtheBAGEL</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&family=Dancing+Script:wght@700&display=swap" rel="stylesheet"/>
@@ -23,7 +23,7 @@
 
 import { A, CATEGORY_ICONS, setRuntimeFlag } from './js/state.js';
 import { render, cSec, aP, oCats, gP, fD, fT, fDl, dDel, nISO, cap, setBApp } from './js/utils.js';
-import { dLog, logout, isAdmin, canAccessKitchen, restoreSession, pickLoginRole, setLoginField, backToLoginProfile, submitLogin } from './js/auth.js';
+import { dLog, logout, isAdmin, canAccessKitchen, restoreSession } from './js/auth.js';
 import { bApp, goSel, goShop, goKit, goAdm, switchShop, sSTb, sKTb, sSCat, sRCat, sSch, toggleDark, setLang } from './js/router.js';
 
 import {
@@ -92,7 +92,6 @@ window.__BOB__ = {
   CATEGORY_ICONS,
 
   dLog, logout,
-  pickLoginRole, setLoginField, backToLoginProfile, submitLogin,
 
   goSel, goShop, goKit, goAdm, switchShop,
   sSTb, sKTb, sSCat, sRCat, sSch,
