@@ -102,12 +102,61 @@ function draftForm() {
         </div>
       </div>
 
-      <div style="display:flex;flex-wrap:wrap;gap:8px">
+      ${!d.id ? `
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="tab ${d.mode !== 'week' ? 'on' : ''}" style="font-size:12px;padding:0 14px;height:36px"
+            onclick="window.__BOB__.setPlanDraftMode('day')">Un jour</button>
+          <button class="tab ${d.mode === 'week' ? 'on' : ''}" style="font-size:12px;padding:0 14px;height:36px"
+            onclick="window.__BOB__.setPlanDraftMode('week')">Semaine complète</button>
+        </div>
+      ` : ''}
+
+      ${d.mode === 'week' && !d.id ? (() => {
+        const days = Array.isArray(d.weekDates) ? d.weekDates : [];
+        const week = (function () {
+          const ref = new Date(d.date || new Date().toISOString().split('T')[0]);
+          const dow = (ref.getDay() + 6) % 7;
+          const from = new Date(ref);
+          from.setDate(ref.getDate() - dow);
+          const out = [];
+          for (let i = 0; i < 7; i += 1) {
+            const dd = new Date(from);
+            dd.setDate(from.getDate() + i);
+            out.push(dd.toISOString().split('T')[0]);
+          }
+          return out;
+        })();
+        const labels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+        return `
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="label">Jours de la semaine</span>
+              <button class="btn btn-ghost btn-sm" onclick="window.__BOB__.resetPlanDraftWeek()">Tous</button>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              ${week.map((iso, i) => {
+                const on = days.includes(iso);
+                const short = iso.slice(5).replace('-', '/');
+                return `<button onclick="window.__BOB__.togglePlanDraftDay('${iso}')"
+                  aria-pressed="${on}"
+                  style="min-width:58px;height:48px;padding:4px 8px;border-radius:8px;border:1.5px solid ${on ? 'var(--green)' : 'var(--border)'};background:${on ? 'var(--green)' : 'transparent'};color:${on ? '#fff' : 'var(--txt)'};cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+                  <span style="font-size:11px;font-weight:700;letter-spacing:.5px">${labels[i]}</span>
+                  <span style="font-size:10px;opacity:${on ? '.9' : '.6'}">${short}</span>
+                </button>`;
+              }).join('')}
+            </div>
+            <div style="font-size:11px;color:var(--txt3)">${days.length} jour${days.length > 1 ? 's' : ''} sélectionné${days.length > 1 ? 's' : ''} · tu peux modifier chaque jour ensuite individuellement</div>
+          </div>
+        `;
+      })() : `
         <div style="display:flex;flex-direction:column;gap:4px;min-width:150px">
           <span class="label">Date</span>
           <input type="date" class="input" value="${d.date}"
             onchange="window.__BOB__.setPlanDraft('date',this.value)"/>
         </div>
+      `}
+
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
         <div style="display:flex;flex-direction:column;gap:4px;min-width:110px">
           <span class="label">Debut</span>
           <input type="time" class="input" value="${d.start}"

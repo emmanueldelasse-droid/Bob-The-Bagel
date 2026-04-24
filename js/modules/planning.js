@@ -23,12 +23,15 @@ function persist() {
 }
 
 function emptyDraft() {
+  const today = A.planRefDate || new Date().toISOString().split('T')[0];
   return {
     id: null,
     shopId: A.selShop?.id || A.planShop || (A.shops?.[0]?.id) || null,
     staffId: '',
     staffName: '',
-    date: A.planRefDate || new Date().toISOString().split('T')[0],
+    date: today,
+    mode: 'day',
+    weekDates: weekRange(today),
     start: '08:00',
     end: '16:00',
     role: SHIFT_ROLES[0],
@@ -85,7 +88,35 @@ export function openPlanDraft(shopId) {
 export function editPlanShift(id) {
   const shift = (A.planning || []).find((s) => s.id === id);
   if (!shift) return;
-  A.planDraft = { ...shift };
+  // Les shifts existants sont toujours edites en mode 'day' — on ne duplique
+  // pas implicitement sur toute la semaine au moment de modifier un jour.
+  A.planDraft = { ...shift, mode: 'day', weekDates: weekRange(shift.date) };
+  render();
+}
+
+export function togglePlanDraftDay(dateIso) {
+  if (!A.planDraft) return;
+  const list = Array.isArray(A.planDraft.weekDates) ? A.planDraft.weekDates : [];
+  if (list.includes(dateIso)) {
+    A.planDraft.weekDates = list.filter((d) => d !== dateIso);
+  } else {
+    A.planDraft.weekDates = [...list, dateIso].sort();
+  }
+  render();
+}
+
+export function setPlanDraftMode(mode) {
+  if (!A.planDraft) return;
+  A.planDraft.mode = mode === 'week' ? 'week' : 'day';
+  if (A.planDraft.mode === 'week' && !Array.isArray(A.planDraft.weekDates)) {
+    A.planDraft.weekDates = weekRange(A.planDraft.date);
+  }
+  render();
+}
+
+export function resetPlanDraftWeek() {
+  if (!A.planDraft) return;
+  A.planDraft.weekDates = weekRange(A.planDraft.date);
   render();
 }
 
@@ -107,45 +138,72 @@ export async function savePlanDraft() {
   const d = A.planDraft;
   if (!d) return;
   if (!d.shopId) { toast('Boutique requise', 'error'); return; }
-  if (!d.date) { toast('Date requise', 'error'); return; }
   if (!d.staffName?.trim() && !d.staffId) { toast('Nom requis', 'error'); return; }
   if (!d.start || !d.end) { toast('Horaires requis', 'error'); return; }
   if (d.end <= d.start) { toast('Fin apres debut', 'error'); return; }
 
   const staffName = d.staffName?.trim() || A.users.find((u) => u.id === d.staffId)?.name || 'Equipe';
-  const payload = {
-    id: d.id || gId('PL'),
+
+  // Mode 'week' : on ne l'accepte qu'en creation. En edition (d.id), un shift
+  // = un jour — l'utilisateur peut toujours editer chaque jour individuellement.
+  const isWeekCreate = !d.id && d.mode === 'week';
+  let dates = [];
+  if (isWeekCreate) {
+    dates = Array.isArray(d.weekDates) ? d.weekDates.filter(Boolean) : [];
+    if (!dates.length) { toast('Aucun jour sélectionné', 'error'); return; }
+  } else {
+    if (!d.date) { toast('Date requise', 'error'); return; }
+    dates = [d.date];
+  }
+
+  const buildPayload = (date, existingId = null) => ({
+    id: existingId || gId('PL'),
     shopId: d.shopId,
     staffId: d.staffId || null,
     staffName,
-    date: d.date,
+    date,
     start: d.start,
     end: d.end,
     role: d.role || SHIFT_ROLES[0],
     note: (d.note || '').trim(),
     updatedAt: nISO(),
-  };
+  });
 
-  try {
-    const saved = await upsertPlanningShift(payload);
-    const next = saved || payload;
-    if (d.id) {
+  if (d.id) {
+    // Edition simple d'un shift existant.
+    const payload = buildPayload(dates[0], d.id);
+    try {
+      const saved = await upsertPlanningShift(payload);
+      const next = saved || payload;
       A.planning = A.planning.map((s) => (s.id === d.id ? next : s));
-      alog(`Planning maj: ${staffName} ${d.date}`);
-      toast('Shift mis a jour');
-    } else {
-      A.planning = [...(A.planning || []), next];
-      alog(`Planning ajout: ${staffName} ${d.date}`);
-      toast('Shift ajoute');
-    }
-  } catch (error) {
-    console.warn('[BOB] savePlanDraft remote failed, fallback local:', error);
-    if (d.id) {
+      alog(`Planning maj: ${staffName} ${payload.date}`);
+      toast('Shift mis à jour');
+    } catch (error) {
+      console.warn('[BOB] savePlanDraft remote failed, fallback local:', error);
       A.planning = A.planning.map((s) => (s.id === d.id ? payload : s));
-    } else {
-      A.planning = [...(A.planning || []), payload];
+      toast('Shift enregistré (hors ligne)', 'warn');
     }
-    toast('Shift enregistré (hors ligne)', 'warn');
+  } else {
+    const payloads = dates.map((date) => buildPayload(date));
+    A.planning = [...(A.planning || []), ...payloads];
+    persist();
+    render();
+
+    let remoteOk = 0;
+    for (const payload of payloads) {
+      try {
+        const saved = await upsertPlanningShift(payload);
+        if (saved) {
+          A.planning = A.planning.map((s) => (s.id === payload.id ? saved : s));
+        }
+        remoteOk += 1;
+      } catch (error) {
+        console.warn('[BOB] savePlanDraft remote failed for one day, kept local:', error);
+      }
+    }
+    const label = payloads.length === 1 ? 'Shift ajouté' : `${payloads.length} shifts ajoutés (${remoteOk} en base)`;
+    alog(`Planning ajout: ${staffName} × ${payloads.length} (${payloads[0].date} → ${payloads[payloads.length - 1].date})`);
+    toast(label);
   }
   persist();
   A.planDraft = null;
