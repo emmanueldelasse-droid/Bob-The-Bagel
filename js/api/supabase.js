@@ -810,7 +810,10 @@ export async function upsertPlanningShift(shift) {
   const sb = getSupabase();
   if (!sb) throw new Error('Client Supabase indisponible');
   const payload = planningStateToRow(shift);
-  if (A.cUser?.id && !payload.created_by) payload.created_by = A.cUser.id;
+  if (!payload.created_by) {
+    const cb = uuidOrNull(A.cUser?.id);
+    if (cb) payload.created_by = cb;
+  }
   const { data, error } = await sb.from('planning').upsert(payload).select('*').single();
   if (error) throw error;
   return planningRowToState(data);

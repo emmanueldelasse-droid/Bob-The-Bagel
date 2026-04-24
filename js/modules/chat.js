@@ -479,11 +479,11 @@ export async function sendMessage() {
   try {
     const { error } = await sb.from('messages').insert({
       conversation_id: convId,
-      sender_id: A.cUser?.id,
+      sender_id: isUuid(A.cUser?.id) ? A.cUser.id : null,
       content: text,
       priority: A.chatPriority || 'normal',
       mentions: mentions.length ? mentions : null,
-      read_by: A.cUser?.id ? [A.cUser.id] : [],
+      read_by: isUuid(A.cUser?.id) ? [A.cUser.id] : [],
       created_at: nISO(),
     });
 
@@ -583,11 +583,11 @@ export async function sendChatPhoto(file) {
 
     const { error } = await sb.from('messages').insert({
       conversation_id: convId,
-      sender_id: A.cUser?.id,
+      sender_id: isUuid(A.cUser?.id) ? A.cUser.id : null,
       content: caption,
       priority,
       photo_url: publicUrl,
-      read_by: A.cUser?.id ? [A.cUser.id] : [],
+      read_by: isUuid(A.cUser?.id) ? [A.cUser.id] : [],
       created_at: nISO(),
     });
     if (error) throw error;
