@@ -2,12 +2,19 @@
    BOBtheBAGEL — views/select.js v2
    ============================================================ */
 
-import { A, SHOPS } from '../state.js';
+import { A, SHOPS, sv } from '../state.js';
 import { canAccessKitchen, isAdmin } from '../auth.js';
 
 export function bSelect() {
   const u = A.cUser;
-  const shops = (Array.isArray(A.shops) && A.shops.length) ? A.shops : SHOPS;
+
+  // Auto-réparation : si A.shops est vide ou invalide, on remet la liste par
+  // défaut et on persiste pour que les prochains chargements soient sains.
+  if (!Array.isArray(A.shops) || !A.shops.length) {
+    A.shops = SHOPS.slice();
+    sv('sh', A.shops);
+  }
+  const shops = A.shops;
 
   return `
     <div class="center-page">
