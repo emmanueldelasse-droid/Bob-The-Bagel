@@ -9,7 +9,7 @@
 - Projet : BOBtheBAGEL
 - Repo : `emmanueldelasse-droid/Bob-The-Bagel`
 - Branche : `main`
-- Déploiement : Vercel
+- Déploiement : GitHub Pages
 - Dernière mise à jour : 2026-04-22
 - Dernière IA : Claude (Opus 4.7)
 
