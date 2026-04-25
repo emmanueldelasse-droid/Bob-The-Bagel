@@ -117,7 +117,10 @@ export const A = {
   lang: ld('lg', 'fr'),
 
   users:    ld('us', INIT_USERS),
-  shops:    ld('sh', SHOPS),
+  shops:    (() => {
+    const stored = ld('sh', SHOPS);
+    return (Array.isArray(stored) && stored.length) ? stored : SHOPS;
+  })(),
   orders:   ld('or', []),
   ksends:   ld('ks', []),
   products: ld('pr', INIT_PRODUCTS.map((p) => ({ ...p, active: true, price: 0 }))),

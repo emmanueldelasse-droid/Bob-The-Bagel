@@ -535,50 +535,10 @@ export function bCalendar() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// BADGE tab + ENCART DASHBOARD
+// BADGE tab
 // ─────────────────────────────────────────────────────────────
 export function calBadge() {
   const n = upcomingCount();
   if (!n) return '';
   return `<span style="background:var(--amber);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px;vertical-align:middle">${n}</span>`;
-}
-
-export function calDashboardWidget() {
-  const { thisWeekEvents } = (() => {
-    // inline pour éviter import circulaire
-    const today = new Date(); today.setHours(0,0,0,0);
-    const in7   = new Date(today); in7.setDate(in7.getDate()+7);
-    const t = today.toISOString().split('T')[0];
-    const l = in7.toISOString().split('T')[0];
-    const evs = A.events.filter(e=>e.date>=t&&e.date<=l&&e.status!=='cancelled'&&e.status!=='done').sort((a,b)=>a.date.localeCompare(b.date));
-    return { thisWeekEvents: evs };
-  })();
-
-  if (!thisWeekEvents.length) return '';
-
-  return `
-    <div style="margin:10px 14px 0;background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
-      <div style="padding:9px 12px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--txt2)">
-          📅 Cette semaine · ${thisWeekEvents.length} événement${thisWeekEvents.length>1?'s':''}
-        </div>
-        <button onclick="window.__BOB__.sSTb('calendar')"
-          style="font-size:10px;color:var(--blue);background:none;border:none;cursor:pointer;font-weight:600;font-family:'Space Grotesk',sans-serif"
-        >Voir tout →</button>
-      </div>
-      ${thisWeekEvents.slice(0,3).map(ev=>{
-        const st = EVENT_STATUSES[ev.status]||EVENT_STATUSES.planned;
-        const d  = new Date(ev.date+'T00:00:00');
-        const dayLabel = d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
-        return `
-          <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
-            <div style="width:3px;height:32px;border-radius:2px;background:${st.color};flex-shrink:0"></div>
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:13px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ev.title}</div>
-              <div style="font-size:11px;color:var(--txt2);margin-top:1px">${dayLabel}${ev.time?' · '+ev.time:''}${ev.location?' · '+ev.location:''}</div>
-            </div>
-            <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:${st.bg};color:${st.color};flex-shrink:0">${st.label}</span>
-          </div>`;
-      }).join('')}
-    </div>`;
 }

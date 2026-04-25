@@ -2,11 +2,12 @@
    BOBtheBAGEL — views/select.js v2
    ============================================================ */
 
-import { A } from '../state.js';
+import { A, SHOPS } from '../state.js';
 import { canAccessKitchen, isAdmin } from '../auth.js';
 
 export function bSelect() {
   const u = A.cUser;
+  const shops = (Array.isArray(A.shops) && A.shops.length) ? A.shops : SHOPS;
 
   return `
     <div class="center-page">
@@ -35,7 +36,7 @@ export function bSelect() {
 
         <!-- Boutiques -->
         <div style="display:flex;flex-direction:column;gap:8px">
-          ${(A.shops || []).map(sh => `
+          ${shops.map(sh => `
             <button
               onclick="window.__BOB__.goShop('${sh.id}')"
               style="

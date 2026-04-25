@@ -8,7 +8,7 @@ import { aP, oCats, gP, fD, fT, fDl } from '../utils.js';
 import { isAdmin } from '../auth.js';
 import { bSum } from './modals.js';
 import { bChat, chatBadge } from './chat.js';
-import { bCalendar, calBadge, calDashboardWidget } from './calendar.js';
+import { bCalendar, calBadge } from './calendar.js';
 import { bAuditSection } from './audit.js';
 import { totalUnread } from '../modules/chat.js';
 import { getLowStock, stockLevel } from '../modules/stock.js';
@@ -259,8 +259,6 @@ function tabOrder() {
 
   return `
     <div style="padding-bottom:72px;max-width:720px;width:100%;margin:0 auto">
-      ${calDashboardWidget()}
-
       <div style="
         padding:10px 14px;
         background:var(--bg2);
