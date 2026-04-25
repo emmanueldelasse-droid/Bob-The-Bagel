@@ -6,7 +6,7 @@ import { A, ORDER_STATUSES } from '../state.js';
 import { aP, oCats, gP, fD, fT, fDl } from '../utils.js';
 import { isAdmin } from '../auth.js';
 import { bChat, chatBadge } from './chat.js';
-import { bCalendar, calBadge, calDashboardWidget } from './calendar.js';
+import { bCalendar, calBadge } from './calendar.js';
 import { totalUnread } from '../modules/chat.js';
 import { getLowStock } from '../modules/stock.js';
 
