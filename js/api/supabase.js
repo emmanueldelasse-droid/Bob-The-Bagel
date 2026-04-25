@@ -418,6 +418,20 @@ function ensureShops() {
   }
 }
 
+// Fusionne la liste Supabase avec la liste SHOPS par defaut pour qu'on
+// affiche toujours les 3 boutiques canoniques (CARL BERNER, BJORVIKA,
+// BOUTIQUE 3) meme quand la table `shops` distante n'a pas ete provisionnee
+// completement. Les entrees Supabase prennent la priorite sur les SHOPS de
+// meme id, et toute boutique Supabase supplementaire est conservee.
+function mergeWithDefaultShops(remote) {
+  const byId = new Map();
+  SHOPS.forEach((shop) => byId.set(shop.id, clone(shop)));
+  (remote || []).forEach((shop) => {
+    if (shop && shop.id) byId.set(shop.id, clone(shop));
+  });
+  return Array.from(byId.values());
+}
+
 export async function loadShopsIntoState() {
   setRuntimeFlag('shopsLoading', true);
   setRuntimeFlag('shopsError', '');
@@ -435,13 +449,9 @@ export async function loadShopsIntoState() {
     const rows = await fetchShops();
     const mapped = (rows || []).map(normalizeShopRow).filter((shop) => shop && shop.id);
 
-    if (mapped.length) {
-      A.shops = mapped;
-      sv('sh', mapped);
-    } else {
-      A.shops = fallbackShops();
-      sv('sh', A.shops);
-    }
+    const merged = mergeWithDefaultShops(mapped);
+    A.shops = merged;
+    sv('sh', merged);
 
     setRuntimeFlag('shopsHydrated', true);
     setRuntimeFlag('lastShopsSyncAt', new Date().toISOString());
