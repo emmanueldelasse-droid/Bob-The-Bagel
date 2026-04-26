@@ -187,6 +187,91 @@ export async function getCurrentProfile() {
   return { ...data, email: user.email };
 }
 
+// Liste tous les profils (pour la vue Utilisateurs côté admin/boss). RLS sur la
+// table profiles doit autoriser SELECT pour les rôles concernés.
+export async function fetchProfiles() {
+  const sb = getSupabase();
+  const { data, error } = await sb.from('profiles').select('*').order('name');
+  if (error) throw error;
+  return data || [];
+}
+
+// Crée un compte Supabase Auth + ligne dans `profiles`, en restaurant la
+// session de l'admin qui a déclenché l'opération (sinon signUp connecte
+// automatiquement le nouveau compte). Idempotent : si l'email existe déjà,
+// remonte l'erreur Supabase.
+export async function createUserAccount({ email, password, name, role }) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Client Supabase indisponible');
+
+  const trimmedEmail = (email || '').trim().toLowerCase();
+  const trimmedName = (name || '').trim();
+  if (!trimmedEmail || !password || !trimmedName || !role) {
+    throw new Error('Champs requis : nom, email, mot de passe, rôle');
+  }
+
+  // 1) Sauvegarder la session admin pour pouvoir la restaurer.
+  const { data: { session: adminSession } } = await sb.auth.getSession();
+
+  // 2) Créer le compte. signUp() pose la session du nouveau user dans le
+  //    client — on la défait ensuite.
+  const { data: signUpData, error: signUpError } = await sb.auth.signUp({
+    email: trimmedEmail,
+    password,
+    options: { data: { name: trimmedName, role } },
+  });
+  if (signUpError) {
+    // Si l'admin avait une session, on la remet en place avant de remonter.
+    if (adminSession) {
+      try { await sb.auth.setSession({ access_token: adminSession.access_token, refresh_token: adminSession.refresh_token }); } catch {}
+    }
+    throw signUpError;
+  }
+
+  const newUser = signUpData?.user;
+  if (!newUser?.id) {
+    throw new Error('Création du compte impossible (pas de user retourné)');
+  }
+
+  // 3) Inscrire le profil applicatif. Si la ligne existe déjà (trigger
+  //    Supabase qui crée automatiquement la ligne profiles via auth hook),
+  //    on bascule en update.
+  const profilePayload = { id: newUser.id, name: trimmedName, role };
+  let { error: insertError } = await sb.from('profiles').insert(profilePayload);
+  if (insertError && /duplicate|already exists|conflict/i.test(insertError.message || '')) {
+    const { error: updateError } = await sb.from('profiles').update({ name: trimmedName, role }).eq('id', newUser.id);
+    if (updateError) {
+      console.warn('[BOB] createUserAccount profile update fallback:', updateError);
+    }
+  } else if (insertError) {
+    console.warn('[BOB] createUserAccount profile insert:', insertError);
+  }
+
+  // 4) Restaurer la session admin si elle existait.
+  if (adminSession) {
+    try {
+      await sb.auth.setSession({
+        access_token: adminSession.access_token,
+        refresh_token: adminSession.refresh_token,
+      });
+    } catch (e) {
+      console.warn('[BOB] createUserAccount restore admin session:', e);
+    }
+  } else {
+    // Pas d'admin connecté au moment de la création (cas rare en mode test) :
+    // on déconnecte le nouveau compte pour éviter un atterrissage inattendu.
+    try { await sb.auth.signOut(); } catch {}
+  }
+
+  return {
+    id: newUser.id,
+    email: trimmedEmail,
+    name: trimmedName,
+    role,
+    needs_email_confirmation: !signUpData.session,
+  };
+}
+
 // ── Orders ─────────────────────────────────────────────────
 export async function fetchOrders(shopId = null) {
   if (isTestMode()) {

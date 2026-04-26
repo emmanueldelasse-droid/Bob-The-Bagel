@@ -28,7 +28,7 @@
 
 import { A, CATEGORY_ICONS, setRuntimeFlag } from './js/state.js';
 import { render, cSec, aP, oCats, gP, fD, fT, fDl, dDel, nISO, cap, setBApp } from './js/utils.js';
-import { dLog, logout, isAdmin, isBoss, canAccessKitchen, restoreSession } from './js/auth.js';
+import { dLog, logout, isAdmin, isBoss, canAccessKitchen, restoreSession, loginEmail, setLoginField } from './js/auth.js';
 import { bApp, goSel, goShop, goKit, goAdm, goBoss, switchShop, sSTb, sKTb, sSCat, sRCat, sSch, toggleDark, setLang } from './js/router.js';
 import { setBossTab } from './js/views/boss.js';
 
@@ -84,7 +84,7 @@ window.__BOB__ = {
   A,
   CATEGORY_ICONS,
 
-  dLog, logout,
+  dLog, logout, loginEmail, setLoginField,
 
   goSel, goShop, goKit, goAdm, goBoss, switchShop,
   setBossTab,

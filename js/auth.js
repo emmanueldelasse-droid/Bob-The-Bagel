@@ -7,6 +7,7 @@ import { A, INIT_USERS, sv, resetOrdersRuntime, resetStockRuntime, resetChatRunt
 import { alog, toast, render, nISO } from './utils.js';
 import {
   getSupabase,
+  signIn,
   signOut,
   getCurrentProfile,
   loadOrdersIntoState,
@@ -113,6 +114,63 @@ async function enterTestProfile(role) {
 export async function dLog(role = 'user') {
   await clearRemoteSession();
   await enterTestProfile(role);
+}
+
+// Connexion via Supabase Auth (email + mot de passe). Lit ensuite le profil
+// applicatif pour récupérer le rôle, hydrate A.cUser et route automatiquement
+// vers la vue par défaut du rôle.
+export function setLoginField(key, value) {
+  if (key === 'loginEmail' || key === 'loginPassword') {
+    A[key] = value;
+  }
+}
+
+export async function loginEmail() {
+  const email = (A.loginEmail || '').trim();
+  const password = A.loginPassword || '';
+  A.loginError = '';
+
+  if (!email || !password) {
+    A.loginError = 'Email et mot de passe requis.';
+    render();
+    return;
+  }
+
+  A.loginLoading = true;
+  render();
+
+  try {
+    // Sortir d'un éventuel mode test pour basculer en mode prod.
+    A.testProfile = null;
+    sv('tp', null);
+
+    await signIn(email, password);
+    const profile = await getCurrentProfile();
+    if (!profile) throw new Error("Profil introuvable. Demande à l'admin de créer ton compte.");
+    if (!profile.role) throw new Error("Profil sans rôle. Demande à l'admin de te configurer un rôle.");
+
+    hydrateUser(profile);
+    A.lAttempts = 0;
+    A.lLocked = false;
+    resetTransientState();
+    logConnection(profile.name || email);
+    alog(`Connexion: ${profile.name || email}`);
+    openDefaultView(profile.role);
+    await startAuthenticatedApp();
+
+    A.loginEmail = '';
+    A.loginPassword = '';
+  } catch (e) {
+    const raw = e?.message || 'Connexion impossible';
+    A.loginError = /invalid|credentials/i.test(raw)
+      ? 'Email ou mot de passe incorrect.'
+      : raw;
+    console.warn('[BOB] loginEmail:', e);
+  } finally {
+    A.loginLoading = false;
+    A.loginPassword = '';
+    render();
+  }
 }
 
 export async function logout() {

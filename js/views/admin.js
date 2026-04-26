@@ -83,15 +83,19 @@ function secUsers() {
       ${A.addU ? `
         <div style="padding:14px 16px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
           <input placeholder="Nom" oninput="window.__BOB__.sNU('name',this.value)"
-            style="border:1.5px solid var(--border);padding:0 12px;height:40px;border-radius:var(--r2);font-size:14px;background:var(--bg2);color:var(--txt);outline:none;width:130px;font-family:'Space Grotesk',sans-serif"
+            style="border:1.5px solid var(--border);padding:0 12px;height:40px;border-radius:var(--r2);font-size:14px;background:var(--bg2);color:var(--txt);outline:none;width:140px;font-family:'Space Grotesk',sans-serif"
           />
-          <input placeholder="Mot de passe" oninput="window.__BOB__.sNU('password',this.value)"
-            style="border:1.5px solid var(--border);padding:0 12px;height:40px;border-radius:var(--r2);font-size:14px;background:var(--bg2);color:var(--txt);outline:none;width:130px;font-family:'Space Grotesk',sans-serif"
+          <input placeholder="Email" type="email" oninput="window.__BOB__.sNU('email',this.value)"
+            style="border:1.5px solid var(--border);padding:0 12px;height:40px;border-radius:var(--r2);font-size:14px;background:var(--bg2);color:var(--txt);outline:none;width:200px;font-family:'Space Grotesk',sans-serif"
+          />
+          <input placeholder="Mot de passe" type="password" oninput="window.__BOB__.sNU('password',this.value)"
+            style="border:1.5px solid var(--border);padding:0 12px;height:40px;border-radius:var(--r2);font-size:14px;background:var(--bg2);color:var(--txt);outline:none;width:160px;font-family:'Space Grotesk',sans-serif"
           />
           <select onchange="window.__BOB__.sNU('role',this.value)" class="select" style="height:40px">
-            <option value="user">Boutique</option>
+            <option value="user">Team BTB</option>
             <option value="kitchen">Cuisine</option>
-            <option value="admin">Admin</option>
+            <option value="admin">Manager</option>
+            <option value="boss">Boss</option>
           </select>
           <button class="btn btn-primary btn-sm" onclick="window.__BOB__.aU()">Créer</button>
           <button class="btn btn-ghost btn-sm" onclick="window.__BOB__.tAU()">Annuler</button>

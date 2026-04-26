@@ -186,7 +186,12 @@ export const A = {
   addRc:  false,
   showSL: false,
   admTab: 'banner',
-  nU:     { name: '', password: '', role: 'user' },
+  nU:     { name: '', email: '', password: '', role: 'user' },
+
+  loginEmail:    '',
+  loginPassword: '',
+  loginError:    '',
+  loginLoading:  false,
   nP:     { name: '', cat: 'PAINS', unit: 'pcs', step: 1, price: 0 },
   rcForm: { sup: '', cart: {} },
 
