@@ -408,7 +408,28 @@ function normalizeShopRow(row) {
 }
 
 function fallbackShops() {
-  return clone(A.shops && A.shops.length ? A.shops : SHOPS);
+  return clone(Array.isArray(A.shops) && A.shops.length ? A.shops : SHOPS);
+}
+
+function ensureShops() {
+  if (!Array.isArray(A.shops) || !A.shops.length) {
+    A.shops = clone(SHOPS);
+    sv('sh', A.shops);
+  }
+}
+
+// Fusionne la liste Supabase avec la liste SHOPS par defaut pour qu'on
+// affiche toujours les 3 boutiques canoniques (CARL BERNER, BJORVIKA,
+// BOUTIQUE 3) meme quand la table `shops` distante n'a pas ete provisionnee
+// completement. Les entrees Supabase prennent la priorite sur les SHOPS de
+// meme id, et toute boutique Supabase supplementaire est conservee.
+function mergeWithDefaultShops(remote) {
+  const byId = new Map();
+  SHOPS.forEach((shop) => byId.set(shop.id, clone(shop)));
+  (remote || []).forEach((shop) => {
+    if (shop && shop.id) byId.set(shop.id, clone(shop));
+  });
+  return Array.from(byId.values());
 }
 
 export async function loadShopsIntoState() {
@@ -421,31 +442,26 @@ export async function loadShopsIntoState() {
       sv('sh', A.shops);
       setRuntimeFlag('shopsHydrated', true);
       setRuntimeFlag('lastShopsSyncAt', new Date().toISOString());
+      ensureShops();
       return A.shops;
     }
 
     const rows = await fetchShops();
     const mapped = (rows || []).map(normalizeShopRow).filter((shop) => shop && shop.id);
 
-    if (mapped.length) {
-      A.shops = mapped;
-      sv('sh', mapped);
-    } else {
-      A.shops = fallbackShops();
-      sv('sh', A.shops);
-    }
+    const merged = mergeWithDefaultShops(mapped);
+    A.shops = merged;
+    sv('sh', merged);
 
     setRuntimeFlag('shopsHydrated', true);
     setRuntimeFlag('lastShopsSyncAt', new Date().toISOString());
+    ensureShops();
     return A.shops;
   } catch (error) {
     const msg = error?.message || 'Chargement des boutiques impossible';
     setRuntimeFlag('shopsError', msg);
     console.warn('[BOB] loadShopsIntoState:', error);
-    if (!A.shops || !A.shops.length) {
-      A.shops = fallbackShops();
-      sv('sh', A.shops);
-    }
+    ensureShops();
     return A.shops;
   } finally {
     setRuntimeFlag('shopsLoading', false);
