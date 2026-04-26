@@ -5,7 +5,7 @@
 
 import { A }            from './state.js';
 import { dDel, render, setBApp } from './utils.js';
-import { isAdmin, canAccessKitchen } from './auth.js';
+import { isAdmin, isBoss, canAccessKitchen } from './auth.js';
 import { enterShopAuditContext } from './modules/audit.js';
 import { bLogin }        from './views/login.js';
 import { bSelect }       from './views/select.js';
@@ -14,6 +14,7 @@ import { bKitchen }      from './views/kitchen.js';
 import { bAdmin }        from './views/admin.js';
 import { bChat }         from './views/chat.js';
 import { bCalendar }     from './views/calendar.js';
+import { bBoss }         from './views/boss.js';
 import { bCfm }          from './views/modals.js';
 
 // ── Router principal ───────────────────────────────────────
@@ -31,6 +32,7 @@ export function bApp() {
     case 'admin':   content = bAdmin();   break;
     case 'chat':    content = bChat();    break;
     case 'calendar': content = bCalendar(); break;
+    case 'boss':   content = bBoss();    break;
     default:        content = bLogin();
   }
 
@@ -77,6 +79,12 @@ export function goAdm() {
   if (!isAdmin()) return;
   A.admTab = 'banner';
   A.view   = 'admin';
+  render();
+}
+
+export function goBoss() {
+  if (!isBoss()) return;
+  A.view = 'boss';
   render();
 }
 

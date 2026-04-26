@@ -26,17 +26,24 @@ export function bLogin() {
 
           <button
             class="btn btn-primary btn-lg btn-full"
-            style="margin-top:2px"
+            style="margin-top:2px;background:#E8294B;border-color:#E8294B"
+            onclick="window.__BOB__.dLog('boss')"
+          >
+            Entrer en Boss
+          </button>
+
+          <button
+            class="btn btn-primary btn-lg btn-full"
             onclick="window.__BOB__.dLog('admin')"
           >
-            Entrer en Admin
+            Entrer en Manager
           </button>
 
           <button
             class="btn btn-ghost btn-lg btn-full"
             onclick="window.__BOB__.dLog('user')"
           >
-            Entrer en User
+            Entrer en Team BTB
           </button>
         </div>
 

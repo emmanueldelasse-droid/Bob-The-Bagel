@@ -3,7 +3,7 @@
    ============================================================ */
 
 import { A, SHOPS, sv } from '../state.js';
-import { canAccessKitchen, isAdmin } from '../auth.js';
+import { canAccessKitchen, isAdmin, isBoss } from '../auth.js';
 
 export function bSelect() {
   const u = A.cUser;
@@ -90,6 +90,32 @@ export function bSelect() {
                 <div style="width:10px;height:10px;border-radius:50%;background:var(--amber);flex-shrink:0"></div>
                 <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:-.2px;color:var(--bg2)">
                   Cuisine centrale
+                </span>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:rgba(255,255,255,.5)">
+                <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          ` : ''}
+
+          ${isBoss() ? `
+            <button
+              onclick="window.__BOB__.goBoss()"
+              style="
+                background:linear-gradient(135deg,#1a1a1a 0%,#2a1a3a 100%);
+                border:1.5px solid #2a1a3a;
+                border-radius:var(--r);
+                padding:16px 18px;
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                margin-top:4px;
+              "
+            >
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:10px;height:10px;border-radius:50%;background:#E8B84B;flex-shrink:0"></div>
+                <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:.5px;color:#fff">
+                  ★ Cockpit Boss
                 </span>
               </div>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:rgba(255,255,255,.5)">
