@@ -96,7 +96,7 @@ function kpiBar() {
   return `
     <div style="display:flex;gap:10px;flex-wrap:wrap;padding:14px 14px 0">
       ${cell('Boutiques actives', shopsCount, 'var(--blue)')}
-      ${cell('Commandes aujourd\\'hui', totalOrdersToday, 'var(--txt)')}
+      ${cell("Commandes aujourd'hui", totalOrdersToday, 'var(--txt)')}
       ${cell('Commandes ouvertes', openOrders, openOrders > 0 ? 'var(--amber)' : 'var(--green)')}
       ${cell('Alertes stock cuisine', kitchenLow, kitchenLow > 0 ? 'var(--red)' : 'var(--green)')}
     </div>`;
