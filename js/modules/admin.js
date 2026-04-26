@@ -38,7 +38,7 @@ export function clBn() {
 // ── Utilisateurs ───────────────────────────────────────────
 export function tAU() {
   A.addU = !A.addU;
-  A.nU   = { name: '', email: '', password: '', role: 'user' };
+  A.nU   = { name: '', username: '', email: '', password: '', role: 'user' };
   render();
 }
 
@@ -76,18 +76,23 @@ export async function aU() {
       email: f.email,
       password: f.password,
       name: cap(f.name),
+      username: f.username,
       role: f.role,
     });
 
     // Refléter localement pour la liste users
-    const localEntry = { id: result.id, name: result.name, role: result.role, email: result.email, photo: null };
+    const localEntry = {
+      id: result.id, name: result.name, role: result.role,
+      email: result.email, username: result.username, photo: null,
+    };
     if (!A.users.some(u => u.id === result.id)) {
       A.users = [...A.users, localEntry];
       sv('us', A.users);
     }
 
     A.addU = false;
-    alog(`Utilisateur créé (Supabase): ${result.name} (${result.email})`);
+    const idLabel = result.username ? `${result.name} (${result.username})` : `${result.name} (${result.email})`;
+    alog(`Utilisateur créé (Supabase): ${idLabel}`);
     if (result.needs_email_confirmation) {
       toast(`Compte créé. ${result.name} doit confirmer son email avant de se connecter.`, 'info');
     } else {
@@ -97,7 +102,13 @@ export async function aU() {
   } catch (err) {
     console.warn('[BOB] aU error:', err);
     const msg = err?.message || 'Création impossible';
-    toast(/already.+regist|exists/i.test(msg) ? 'Cet email a déjà un compte.' : msg, 'error');
+    if (/duplicate|unique|already exists/i.test(msg) && /username/i.test(msg)) {
+      toast('Ce pseudo est déjà pris.', 'error');
+    } else if (/already.+regist|exists/i.test(msg)) {
+      toast('Cet email a déjà un compte.', 'error');
+    } else {
+      toast(msg, 'error');
+    }
   }
 }
 

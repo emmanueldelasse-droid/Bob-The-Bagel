@@ -9,6 +9,8 @@
 CREATE TABLE IF NOT EXISTS public.profiles (
   id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   name        TEXT NOT NULL DEFAULT '',
+  username    TEXT UNIQUE,
+  email       TEXT,
   role        TEXT NOT NULL DEFAULT 'user',
   photo_url   TEXT,
   is_active   BOOLEAN NOT NULL DEFAULT true,
@@ -17,10 +19,18 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS name        TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS username    TEXT,
+  ADD COLUMN IF NOT EXISTS email       TEXT,
   ADD COLUMN IF NOT EXISTS role        TEXT NOT NULL DEFAULT 'user',
   ADD COLUMN IF NOT EXISTS photo_url   TEXT,
   ADD COLUMN IF NOT EXISTS is_active   BOOLEAN NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS created_at  TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- Unicité du pseudo (insensible à la casse)
+DROP INDEX IF EXISTS profiles_username_unique_idx;
+CREATE UNIQUE INDEX profiles_username_unique_idx
+  ON public.profiles (lower(username))
+  WHERE username IS NOT NULL;
 
 -- Contrainte sur les rôles autorisés
 ALTER TABLE public.profiles
@@ -28,6 +38,26 @@ ALTER TABLE public.profiles
 ALTER TABLE public.profiles
   ADD CONSTRAINT profiles_role_check
   CHECK (role IN ('user', 'admin', 'boss', 'kitchen'));
+```
+
+## 1.bis. Fonction RPC pour résoudre pseudo → email avant le login
+
+```sql
+-- Permet à l'app de résoudre un pseudo en email pour ensuite faire signIn,
+-- SANS exposer la table profiles complète aux utilisateurs anonymes.
+CREATE OR REPLACE FUNCTION public.get_email_by_username(p_username TEXT)
+RETURNS TEXT
+LANGUAGE SQL
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT email FROM public.profiles
+  WHERE lower(username) = lower(p_username)
+    AND email IS NOT NULL
+  LIMIT 1;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_email_by_username(TEXT) TO anon, authenticated;
 ```
 
 ## 2. Politiques RLS
@@ -95,9 +125,9 @@ Tant qu'il n'y a aucun Boss, le helper `is_admin()` retourne `false` pour tout l
 -- Renseigne email + mot de passe + coche "Auto Confirm User"
 -- Copie l'UUID généré (colonne ID).
 
--- 2. Insérer le profil Boss avec cet UUID
-INSERT INTO public.profiles (id, name, role)
-VALUES ('UUID_COPIÉ_DEPUIS_AUTH', 'Boss', 'boss');
+-- 2. Insérer le profil Boss avec cet UUID, l'email choisi et un pseudo
+INSERT INTO public.profiles (id, name, username, email, role)
+VALUES ('UUID_COPIÉ_DEPUIS_AUTH', 'Boss', 'boss', 'boss@exemple.com', 'boss');
 ```
 
-Ensuite tu te connectes dans l'app avec cet email/mot de passe → tu atterris sur le Cockpit Boss → onglet Utilisateurs → tu peux créer tous les autres comptes (Manager, Team BTB, Cuisine) depuis l'interface.
+Ensuite tu te connectes dans l'app **avec ton email OU ton pseudo `boss`** + mot de passe → tu atterris sur le Cockpit Boss → onglet Utilisateurs → tu peux créer tous les autres comptes (Manager, Team BTB, Cuisine) depuis l'interface en renseignant nom + pseudo + email + mot de passe + rôle. Chaque utilisateur pourra ensuite se connecter avec son pseudo OU son email.

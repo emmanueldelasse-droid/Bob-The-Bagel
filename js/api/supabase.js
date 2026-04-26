@@ -196,18 +196,21 @@ export async function fetchProfiles() {
   return data || [];
 }
 
-// Crée un compte Supabase Auth + ligne dans `profiles`, en restaurant la
-// session de l'admin qui a déclenché l'opération (sinon signUp connecte
-// automatiquement le nouveau compte). Idempotent : si l'email existe déjà,
-// remonte l'erreur Supabase.
-export async function createUserAccount({ email, password, name, role }) {
+// Crée un compte Supabase Auth + ligne dans `profiles` (avec pseudo et email),
+// en restaurant la session de l'admin qui a déclenché l'opération (sinon
+// signUp connecte automatiquement le nouveau compte).
+export async function createUserAccount({ email, password, name, role, username }) {
   const sb = getSupabase();
   if (!sb) throw new Error('Client Supabase indisponible');
 
   const trimmedEmail = (email || '').trim().toLowerCase();
   const trimmedName = (name || '').trim();
+  const trimmedUsername = (username || '').trim().toLowerCase();
   if (!trimmedEmail || !password || !trimmedName || !role) {
     throw new Error('Champs requis : nom, email, mot de passe, rôle');
+  }
+  if (trimmedUsername && !/^[a-z0-9._-]{2,30}$/.test(trimmedUsername)) {
+    throw new Error('Pseudo invalide (2-30 caractères : lettres, chiffres, point, tiret, underscore)');
   }
 
   // 1) Sauvegarder la session admin pour pouvoir la restaurer.
@@ -218,10 +221,9 @@ export async function createUserAccount({ email, password, name, role }) {
   const { data: signUpData, error: signUpError } = await sb.auth.signUp({
     email: trimmedEmail,
     password,
-    options: { data: { name: trimmedName, role } },
+    options: { data: { name: trimmedName, role, username: trimmedUsername || null } },
   });
   if (signUpError) {
-    // Si l'admin avait une session, on la remet en place avant de remonter.
     if (adminSession) {
       try { await sb.auth.setSession({ access_token: adminSession.access_token, refresh_token: adminSession.refresh_token }); } catch {}
     }
@@ -233,13 +235,19 @@ export async function createUserAccount({ email, password, name, role }) {
     throw new Error('Création du compte impossible (pas de user retourné)');
   }
 
-  // 3) Inscrire le profil applicatif. Si la ligne existe déjà (trigger
-  //    Supabase qui crée automatiquement la ligne profiles via auth hook),
-  //    on bascule en update.
-  const profilePayload = { id: newUser.id, name: trimmedName, role };
+  // 3) Inscrire le profil applicatif (insert, fallback update si trigger).
+  const profilePayload = {
+    id: newUser.id,
+    name: trimmedName,
+    role,
+    email: trimmedEmail,
+    ...(trimmedUsername ? { username: trimmedUsername } : {}),
+  };
   let { error: insertError } = await sb.from('profiles').insert(profilePayload);
   if (insertError && /duplicate|already exists|conflict/i.test(insertError.message || '')) {
-    const { error: updateError } = await sb.from('profiles').update({ name: trimmedName, role }).eq('id', newUser.id);
+    const updatePayload = { name: trimmedName, role, email: trimmedEmail };
+    if (trimmedUsername) updatePayload.username = trimmedUsername;
+    const { error: updateError } = await sb.from('profiles').update(updatePayload).eq('id', newUser.id);
     if (updateError) {
       console.warn('[BOB] createUserAccount profile update fallback:', updateError);
     }
@@ -258,18 +266,41 @@ export async function createUserAccount({ email, password, name, role }) {
       console.warn('[BOB] createUserAccount restore admin session:', e);
     }
   } else {
-    // Pas d'admin connecté au moment de la création (cas rare en mode test) :
-    // on déconnecte le nouveau compte pour éviter un atterrissage inattendu.
     try { await sb.auth.signOut(); } catch {}
   }
 
   return {
     id: newUser.id,
     email: trimmedEmail,
+    username: trimmedUsername || null,
     name: trimmedName,
     role,
     needs_email_confirmation: !signUpData.session,
   };
+}
+
+// Résout un identifiant de connexion : si c'est un email (contient @), on le
+// retourne tel quel. Sinon on suppose un pseudo et on appelle la RPC
+// `get_email_by_username` qui retourne l'email correspondant ou null.
+export async function resolveLoginIdentifier(identifier) {
+  const trimmed = (identifier || '').trim();
+  if (!trimmed) return null;
+  if (trimmed.includes('@')) return trimmed.toLowerCase();
+
+  const sb = getSupabase();
+  if (!sb) return null;
+
+  try {
+    const { data, error } = await sb.rpc('get_email_by_username', { p_username: trimmed });
+    if (error) {
+      console.warn('[BOB] resolveLoginIdentifier RPC:', error.message);
+      return null;
+    }
+    return (data || '').toLowerCase() || null;
+  } catch (e) {
+    console.warn('[BOB] resolveLoginIdentifier:', e);
+    return null;
+  }
 }
 
 // ── Orders ─────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import {
   loadOrdersIntoState,
   loadStockIntoState,
   loadShopsIntoState,
+  resolveLoginIdentifier,
   startRealtimeSync,
   stopRealtimeSync,
 } from './api/supabase.js';
@@ -126,12 +127,12 @@ export function setLoginField(key, value) {
 }
 
 export async function loginEmail() {
-  const email = (A.loginEmail || '').trim();
+  const identifier = (A.loginEmail || '').trim();
   const password = A.loginPassword || '';
   A.loginError = '';
 
-  if (!email || !password) {
-    A.loginError = 'Email et mot de passe requis.';
+  if (!identifier || !password) {
+    A.loginError = 'Pseudo (ou email) et mot de passe requis.';
     render();
     return;
   }
@@ -140,9 +141,14 @@ export async function loginEmail() {
   render();
 
   try {
-    // Sortir d'un éventuel mode test pour basculer en mode prod.
     A.testProfile = null;
     sv('tp', null);
+
+    // Résout pseudo → email si l'identifiant ne contient pas d'@
+    const email = await resolveLoginIdentifier(identifier);
+    if (!email) {
+      throw new Error('Pseudo introuvable.');
+    }
 
     await signIn(email, password);
     const profile = await getCurrentProfile();
@@ -153,8 +159,8 @@ export async function loginEmail() {
     A.lAttempts = 0;
     A.lLocked = false;
     resetTransientState();
-    logConnection(profile.name || email);
-    alog(`Connexion: ${profile.name || email}`);
+    logConnection(profile.name || identifier);
+    alog(`Connexion: ${profile.name || identifier}`);
     openDefaultView(profile.role);
     await startAuthenticatedApp();
 
@@ -163,7 +169,7 @@ export async function loginEmail() {
   } catch (e) {
     const raw = e?.message || 'Connexion impossible';
     A.loginError = /invalid|credentials/i.test(raw)
-      ? 'Email ou mot de passe incorrect.'
+      ? 'Identifiant ou mot de passe incorrect.'
       : raw;
     console.warn('[BOB] loginEmail:', e);
   } finally {
