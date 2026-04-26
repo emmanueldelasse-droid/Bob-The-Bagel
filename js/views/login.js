@@ -26,7 +26,7 @@ export function bLogin() {
 
         <!-- Formulaire email + mot de passe -->
         <form id="login-form" onsubmit="event.preventDefault();window.__BOB__.loginEmail()" style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
-          <input id="login-email" type="email" autocomplete="username" placeholder="Email"
+          <input id="login-email" type="text" autocomplete="username" placeholder="Pseudo ou email"
             value="${A.loginEmail || ''}"
             oninput="window.__BOB__.setLoginField('loginEmail',this.value)"
             style="width:100%;height:46px;padding:0 14px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--txt);font-family:'Space Grotesk',sans-serif;font-size:14px;outline:none"

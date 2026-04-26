@@ -186,7 +186,7 @@ export const A = {
   addRc:  false,
   showSL: false,
   admTab: 'banner',
-  nU:     { name: '', email: '', password: '', role: 'user' },
+  nU:     { name: '', username: '', email: '', password: '', role: 'user' },
 
   loginEmail:    '',
   loginPassword: '',

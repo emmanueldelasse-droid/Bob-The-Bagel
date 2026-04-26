@@ -85,6 +85,9 @@ function secUsers() {
           <input placeholder="Nom" oninput="window.__BOB__.sNU('name',this.value)"
             style="border:1.5px solid var(--border);padding:0 12px;height:40px;border-radius:var(--r2);font-size:14px;background:var(--bg2);color:var(--txt);outline:none;width:140px;font-family:'Space Grotesk',sans-serif"
           />
+          <input placeholder="Pseudo" oninput="window.__BOB__.sNU('username',this.value)"
+            style="border:1.5px solid var(--border);padding:0 12px;height:40px;border-radius:var(--r2);font-size:14px;background:var(--bg2);color:var(--txt);outline:none;width:120px;font-family:'Space Grotesk',sans-serif"
+          />
           <input placeholder="Email" type="email" oninput="window.__BOB__.sNU('email',this.value)"
             style="border:1.5px solid var(--border);padding:0 12px;height:40px;border-radius:var(--r2);font-size:14px;background:var(--bg2);color:var(--txt);outline:none;width:200px;font-family:'Space Grotesk',sans-serif"
           />
