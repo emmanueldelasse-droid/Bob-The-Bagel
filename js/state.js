@@ -39,9 +39,10 @@ export const ORDER_STATUSES = {
 };
 
 export const INIT_USERS = [
-  { id: 'u1', name: 'Admin',   role: 'admin',   photo: null },
-  { id: 'u2', name: 'User',    role: 'user',    photo: null },
-  { id: 'u3', name: 'Kitchen', role: 'kitchen', photo: null },
+  { id: 'u1', name: 'Manager',  role: 'admin',   photo: null },
+  { id: 'u2', name: 'Team BTB', role: 'user',    photo: null },
+  { id: 'u3', name: 'Kitchen',  role: 'kitchen', photo: null },
+  { id: 'u4', name: 'Boss',     role: 'boss',    photo: null },
 ];
 
 export const INIT_PRODUCTS = [
@@ -147,6 +148,8 @@ export const A = {
   kTab:  'orders',
   sCat:  'PAINS',
   rcCat: 'PAINS',
+
+  bossTab: 'overview',
 
   calTab:       'list',
   calFilter:    'all',

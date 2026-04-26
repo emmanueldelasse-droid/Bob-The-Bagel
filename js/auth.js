@@ -24,7 +24,9 @@ import { loadAuditsIntoState } from './modules/audit.js';
 
 function buildTestUser(role) {
   const source = A.users.find((user) => user.role === role) || INIT_USERS.find((user) => user.role === role);
-  const fallbackName = role === 'admin' ? 'Admin' : 'User';
+  const fallbackName = role === 'admin' ? 'Manager'
+                     : role === 'boss'  ? 'Boss'
+                     :                    'Team BTB';
 
   return {
     id: source?.id || `test-${role}`,
@@ -50,9 +52,12 @@ function logConnection(label) {
   sv('cl', A.cLog);
 }
 
-function openDefaultView(_role) {
+function openDefaultView(role) {
   A.selShop = null;
-  A.view = 'select';
+  if (role === 'boss')        A.view = 'boss';
+  else if (role === 'admin')  A.view = 'admin';
+  else if (role === 'kitchen') A.view = 'kitchen';
+  else                         A.view = 'select';
 }
 
 async function startAuthenticatedApp() {
@@ -88,7 +93,8 @@ function resetTransientState() {
 }
 
 async function enterTestProfile(role) {
-  const safeRole = role === 'admin' ? 'admin' : 'user';
+  const allowed = ['admin', 'user', 'boss', 'kitchen'];
+  const safeRole = allowed.includes(role) ? role : 'user';
   const user = buildTestUser(safeRole);
 
   A.testProfile = safeRole;
@@ -152,20 +158,24 @@ export async function restoreSession() {
   }
 }
 
-export function isAdmin()   { return A.cUser?.role === 'admin'; }
+// Le rôle admin couvre Manager, le rôle boss couvre Manager + cockpit Boss.
+// isAdmin() retourne true pour les deux car Boss = superset complet du Manager.
+export function isAdmin()   { return A.cUser?.role === 'admin' || A.cUser?.role === 'boss'; }
+export function isBoss()    { return A.cUser?.role === 'boss'; }
+export function isManager() { return A.cUser?.role === 'admin'; }
 export function isKitchen() { return A.cUser?.role === 'kitchen'; }
 export function isUser()    { return A.cUser?.role === 'user'; }
 
 export function canAccessShop(_shopId) {
   if (!A.cUser) return false;
-  if (isAdmin()) return true;
-  if (isKitchen()) return true;
   return true;
 }
 
+// Cuisine centrale ouverte à tous les utilisateurs connectés (Team BTB, Manager,
+// Boss, Kitchen) — décision validée : la cuisine est un espace au même titre
+// qu'une boutique.
 export function canAccessKitchen() {
-  if (!A.cUser) return false;
-  return isAdmin() || isKitchen();
+  return !!A.cUser;
 }
 
 export function changePassword(_userId, _newPassword) {
