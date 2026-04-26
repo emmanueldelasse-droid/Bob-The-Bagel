@@ -7,6 +7,11 @@ import { A, sv }                              from '../state.js';
 import { gId, nISO, cap, toast, render, alog } from '../utils.js';
 import { createUserCredential, deleteUserCredential, changePassword } from '../auth.js';
 import { enterAdminAuditContext } from './audit.js';
+import { createUserAccount } from '../api/supabase.js';
+
+function isTestMode() {
+  return !!A.testProfile;
+}
 
 // ── Tabs admin ─────────────────────────────────────────────
 export function sAT(tab) {
@@ -33,33 +38,67 @@ export function clBn() {
 // ── Utilisateurs ───────────────────────────────────────────
 export function tAU() {
   A.addU = !A.addU;
-  A.nU   = { name: '', password: '', role: 'user' };
+  A.nU   = { name: '', email: '', password: '', role: 'user' };
   render();
 }
 
 export function sNU(field, val) { A.nU[field] = val; }
 
-export function aU() {
+export async function aU() {
   const f = A.nU;
   if (!f.name?.trim())     { toast('Nom requis', 'error'); return; }
   if (!f.password?.trim()) { toast('Mot de passe requis', 'error'); return; }
 
-  const exists = A.users.some(u => u.name.toLowerCase() === f.name.toLowerCase());
-  if (exists) { toast('Nom déjà utilisé', 'error'); return; }
+  // Mode test : on reste en local, comme avant.
+  if (isTestMode()) {
+    const exists = A.users.some(u => u.name.toLowerCase() === f.name.toLowerCase());
+    if (exists) { toast('Nom déjà utilisé', 'error'); return; }
 
-  const id = 'u-' + gId();
-  const newUser = { id, name: cap(f.name), role: f.role, photo: null };
+    const id = 'u-' + gId();
+    const newUser = { id, name: cap(f.name), role: f.role, photo: null };
 
-  A.users = [...A.users, newUser];
-  sv('us', A.users);
+    A.users = [...A.users, newUser];
+    sv('us', A.users);
+    createUserCredential(id, cap(f.password));
 
-  // Credential stocké séparément (sécurité prototype)
-  createUserCredential(id, cap(f.password));
+    A.addU = false;
+    alog(`Utilisateur créé (test local): ${newUser.name}`);
+    toast('Utilisateur créé (mode test) ✓');
+    render();
+    return;
+  }
 
-  A.addU = false;
-  alog(`Utilisateur créé: ${newUser.name}`);
-  toast('Utilisateur créé ✓');
-  render();
+  // Mode prod : Supabase Auth + table profiles
+  if (!f.email?.trim()) { toast('Email requis', 'error'); return; }
+
+  try {
+    const result = await createUserAccount({
+      email: f.email,
+      password: f.password,
+      name: cap(f.name),
+      role: f.role,
+    });
+
+    // Refléter localement pour la liste users
+    const localEntry = { id: result.id, name: result.name, role: result.role, email: result.email, photo: null };
+    if (!A.users.some(u => u.id === result.id)) {
+      A.users = [...A.users, localEntry];
+      sv('us', A.users);
+    }
+
+    A.addU = false;
+    alog(`Utilisateur créé (Supabase): ${result.name} (${result.email})`);
+    if (result.needs_email_confirmation) {
+      toast(`Compte créé. ${result.name} doit confirmer son email avant de se connecter.`, 'info');
+    } else {
+      toast(`Compte ${result.name} créé ✓`);
+    }
+    render();
+  } catch (err) {
+    console.warn('[BOB] aU error:', err);
+    const msg = err?.message || 'Création impossible';
+    toast(/already.+regist|exists/i.test(msg) ? 'Cet email a déjà un compte.' : msg, 'error');
+  }
 }
 
 export function dU(id) {
