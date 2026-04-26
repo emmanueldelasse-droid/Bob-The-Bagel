@@ -10,8 +10,8 @@
 - Repo : `emmanueldelasse-droid/Bob-The-Bagel`
 - Branche : `main`
 - Déploiement : GitHub Pages
-- Dernière mise à jour : 2026-04-22
-- Dernière IA : Claude (Opus 4.7)
+- Dernière mise à jour : 2026-04-26
+- Dernière IA : Claude (Sonnet 4.6)
 
 ## 2) RÉSUMÉ ULTRA-COURT
 - Runtime réel : app statique `index.html` + modules JS ES6, **pas React**.
@@ -100,14 +100,14 @@
 - `js/views/audit.js`
 
 ## 7) PROCHAINE ACTION UNIQUE
-**NEXT_ACTION** : provisionner côté Supabase la table `audits` et le bucket `audit-photos` (RLS admin/manager), puis trancher le flux admin users sur Supabase Auth (G1, P0) et appliquer les droits par boutique (I1).
+**NEXT_ACTION** : valider les appels Supabase réels en prod (commandes, stock, chat, boutiques) maintenant que la clé anon est correcte (PR #15), puis provisionner la table `audits` et le bucket `audit-photos` (RLS admin/manager).
 
 ## 8) BLOCAGES / RISQUES
 - App encore hybride = comportement non totalement fiable en multi-utilisateur réel
 - Mapping Supabase encore partiellement défensif car schéma distant pas encore totalement reflété dans le front
 - Faux sentiment de “fini” sur admin / calendrier / photos chat
 - Référentiel visuel ancien possiblement contradictoire avec le runtime actuel
-- La clé Supabase front actuelle répond `Invalid API key`, donc le mode test doit continuer à contourner la base
+- ~~La clé Supabase front actuelle répond `Invalid API key`~~ → **RÉSOLU** (PR #15 mergée le 2026-04-26 : clé anon JWT correctement formée, tous les appels Supabase débloqués)
 
 ## 9) PLANNING D'AMÉLIORATION VIVANT
 > À mettre à jour à chaque session. Garder court. Mettre un seul statut par ligne.
@@ -154,14 +154,15 @@
 - Audit contextuel : un onglet 🔍 Audit apparaît dans la vue boutique uniquement si l'utilisateur est admin. En contexte "shop" (`A.auditContext = 'shop'`), la liste est filtrée sur `A.selShop`, les filtres inter-boutiques sont masqués et le dropdown boutique de l'édition est remplacé par une puce figée. Le panneau admin garde la vue audit globale (`A.auditContext = 'admin'`) avec filtres + bouton par boutique.
 
 ## 11) DERNIÈRE SESSION
-- Date : 2026-04-22
-- IA : Claude (Opus 4.7)
-- Fait : alignement du chat sur le mode test + photos chat (bouton 📎) + sortie des boutiques du hardcode `SHOPS` via `A.shops` hydraté par `loadShopsIntoState` + section Audit admin complète (module + vue + intégration onglet admin) avec sections prédéfinies propreté/stock/équipements/hygiène/service, items ok/nok/na + commentaires, photos multiples par item et photo générale, score auto, hydratation `loadAuditsIntoState` (Supabase `audits` en prod, fallback local en test)
-- Fichiers inspectés : `SESSION.md`, `index.html`, `js/state.js`, `js/auth.js`, `js/router.js`, `js/api/supabase.js`, `js/utils.js`, `js/modules/chat.js`, `js/modules/admin.js`, `js/modules/calendar.js`, `js/views/chat.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/calendar.js`, `js/views/admin.js`
-- Fichiers modifiés : `js/modules/chat.js`, `js/views/chat.js`, `js/state.js`, `js/auth.js`, `js/api/supabase.js`, `js/router.js`, `js/views/select.js`, `js/views/shop.js`, `js/views/calendar.js`, `js/modules/calendar.js`, `js/views/admin.js`, `index.html`, `SESSION.md`
+- Date : 2026-04-26
+- IA : Claude (Sonnet 4.6)
+- Fait : correction clé anon Supabase (JWT corrompu `iss=supabalartaqvcehpohfsr` → clé correcte), PR #15 mergée — tous les appels Supabase débloqués ; mise à jour SESSION.md
+- Fichiers modifiés : `js/api/supabase.js` (clé anon), `SESSION.md`
+- Points ouverts : valider les appels Supabase en prod (commandes/stock/chat/boutiques/audits) avec la nouvelle clé ; provisionner table `audits` + bucket `audit-photos` (RLS) ; G1 (admin users Supabase Auth) ; I1 (droits par boutique)
+
+### Session précédente (2026-04-22 — Claude Opus 4.7)
+- Fait : alignement du chat sur le mode test + photos chat (bouton 📎) + sortie des boutiques du hardcode `SHOPS` via `A.shops` hydraté par `loadShopsIntoState` + section Audit admin complète (module + vue + intégration onglet admin)
 - Fichiers créés : `js/modules/audit.js`, `js/views/audit.js`
-- Suivi : admin = user + spéciaux → login admin va désormais sur `select` et un bouton "Panneau admin" est exposé pour accéder à `bAdmin` (modifs : `js/auth.js`, `js/views/select.js`)
-- Points ouverts : provisionner table `audits` et bucket `audit-photos` Supabase (+ RLS) ; valider chat + photos contre la vraie base Supabase ; valider schéma `shops` ; G1 (admin users Supabase Auth) et I1 (droits par boutique)
 
 ## 12) FORMAT OBLIGATOIRE POUR TOUTE IA
 ### Au démarrage
