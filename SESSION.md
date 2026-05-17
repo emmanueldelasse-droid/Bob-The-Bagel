@@ -10,7 +10,7 @@
 - Repo : `emmanueldelasse-droid/Bob-The-Bagel`
 - Branche : `main`
 - Déploiement : GitHub Pages
-- Dernière mise à jour : 2026-04-26
+- Dernière mise à jour : 2026-05-17
 - Dernière IA : Claude (Sonnet 4.6)
 
 ## 2) RÉSUMÉ ULTRA-COURT
@@ -154,11 +154,15 @@
 - Audit contextuel : un onglet 🔍 Audit apparaît dans la vue boutique uniquement si l'utilisateur est admin. En contexte "shop" (`A.auditContext = 'shop'`), la liste est filtrée sur `A.selShop`, les filtres inter-boutiques sont masqués et le dropdown boutique de l'édition est remplacé par une puce figée. Le panneau admin garde la vue audit globale (`A.auditContext = 'admin'`) avec filtres + bouton par boutique.
 
 ## 11) DERNIÈRE SESSION
-- Date : 2026-04-26
+- Date : 2026-05-17
 - IA : Claude (Sonnet 4.6)
+- Fait : ajout du guide de continuité de session IA dans `docs/SESSION-GUIDE.md` (workflow ChatGPT custom instructions + prompts de démarrage/fin + commandes rapides)
+- Fichiers modifiés : `docs/SESSION-GUIDE.md` (créé), `SESSION.md`
+- Points ouverts : valider les appels Supabase en prod (commandes/stock/chat/boutiques/audits) avec la nouvelle clé ; provisionner table `audits` + bucket `audit-photos` (RLS) ; G1 (admin users Supabase Auth) ; I1 (droits par boutique)
+
+### Session précédente (2026-04-26 — Claude Sonnet 4.6)
 - Fait : correction clé anon Supabase (JWT corrompu `iss=supabalartaqvcehpohfsr` → clé correcte), PR #15 mergée — tous les appels Supabase débloqués ; mise à jour SESSION.md
 - Fichiers modifiés : `js/api/supabase.js` (clé anon), `SESSION.md`
-- Points ouverts : valider les appels Supabase en prod (commandes/stock/chat/boutiques/audits) avec la nouvelle clé ; provisionner table `audits` + bucket `audit-photos` (RLS) ; G1 (admin users Supabase Auth) ; I1 (droits par boutique)
 
 ### Session précédente (2026-04-22 — Claude Opus 4.7)
 - Fait : alignement du chat sur le mode test + photos chat (bouton 📎) + sortie des boutiques du hardcode `SHOPS` via `A.shops` hydraté par `loadShopsIntoState` + section Audit admin complète (module + vue + intégration onglet admin)
