@@ -10,17 +10,17 @@
 - Repo : `emmanueldelasse-droid/Bob-The-Bagel`
 - Branche : `main`
 - Déploiement : GitHub Pages
-- Dernière mise à jour : 2026-04-26
+- Dernière mise à jour : 2026-05-22
 - Dernière IA : Claude (Sonnet 4.6)
 
 ## 2) RÉSUMÉ ULTRA-COURT
 - Runtime réel : app statique `index.html` + modules JS ES6, **pas React**.
 - Backend cible : Supabase comme **source de vérité unique**.
-- État réel : commandes, stock et chat sont branchés à Supabase avec hydratation, synchro live et états UI visibles ; en mode test local, commandes, stock ET chat retombent désormais tous en local. Les photos chat sont envoyées (Supabase Storage en prod, data URL en test). Les boutiques sont maintenant hydratées depuis Supabase (`A.shops`) avec fallback local sur le hardcode `SHOPS`. L'accueil reste en accès test direct par boutons Admin/User.
+- État réel : commandes, stock et chat sont branchés à Supabase avec hydratation, synchro live et états UI visibles ; en mode test local, commandes, stock ET chat retombent désormais tous en local. Les photos chat sont envoyées (Supabase Storage en prod, data URL en test). Les boutiques sont maintenant hydratées depuis Supabase (`A.shops`) avec fallback local sur le hardcode `SHOPS`. L'accueil reste en accès test direct par boutons Admin/User. Login mixte pseudo OU email opérationnel (RPC `get_email_by_username` SECURITY DEFINER), pseudo obligatoire à la création de compte.
 
 ## 3) ÉTAT ACTUEL RÉEL
 ### Ce qui existe déjà
-- Login
+- Login (mixte pseudo OU email)
 - Sélection d'espace
 - Vue boutique
 - Vue cuisine
@@ -35,6 +35,8 @@
 
 ### Ce qui est déjà branché côté Supabase
 - Auth email / mot de passe toujours disponible côté backend cible
+- Login mixte pseudo OU email : RPC `get_email_by_username` (SECURITY DEFINER) résout le pseudo → email avant `signIn` ; si @ détecté, signIn direct
+- Pseudo unique (insensible à la casse) : index partiel `lower(username)` côté Supabase, colonne `username` dans `profiles`
 - Accueil login basculé en accès test direct par boutons Admin/User sans mot de passe
 - Commandes et stock retombent en persistance locale en mode test si l'anon key front est invalide
 - Profil utilisateur
@@ -100,7 +102,7 @@
 - `js/views/audit.js`
 
 ## 7) PROCHAINE ACTION UNIQUE
-**NEXT_ACTION** : valider les appels Supabase réels en prod (commandes, stock, chat, boutiques) maintenant que la clé anon est correcte (PR #15), puis provisionner la table `audits` et le bucket `audit-photos` (RLS admin/manager).
+**NEXT_ACTION** : provisionner côté Supabase — (1) colonne `username` + `email` dans `profiles`, index `lower(username)`, RPC `get_email_by_username` (voir `SUPABASE_SETUP.md`) ; (2) table `audits` + bucket `audit-photos` (RLS admin/manager) ; puis valider le login pseudo en prod.
 
 ## 8) BLOCAGES / RISQUES
 - App encore hybride = comportement non totalement fiable en multi-utilisateur réel
@@ -152,15 +154,24 @@
 - Audits boutique : section dédiée côté admin avec sections prédéfinies (propreté/stock/équipements/hygiène/service), items ok/nok/na + commentaire + photos multiples, photo générale, score OK/KO auto, brouillon ou clôturé. Persistance locale (`A.audits`, clé `au`), upsert Supabase `audits` en prod (fallback silencieux vers local si erreur)
 - Rôle admin = superset du rôle user : au login, l'admin atterrit désormais sur la page `select` comme un user (accès boutiques + cuisine + chat + calendrier via les onglets) et dispose en plus d'un bouton "Panneau admin" rouge sur `select` qui mène à `bAdmin` (bannière, utilisateurs, produits, audit, logs)
 - Audit contextuel : un onglet 🔍 Audit apparaît dans la vue boutique uniquement si l'utilisateur est admin. En contexte "shop" (`A.auditContext = 'shop'`), la liste est filtrée sur `A.selShop`, les filtres inter-boutiques sont masqués et le dropdown boutique de l'édition est remplacé par une puce figée. Le panneau admin garde la vue audit globale (`A.auditContext = 'admin'`) avec filtres + bouton par boutique.
+- Login mixte pseudo OU email (PR #17) : champ unique "Pseudo ou email", RPC `get_email_by_username` (SECURITY DEFINER) côté Supabase pour résoudre pseudo → email avant `signIn`. Pseudo obligatoire à la création (unique, insensible à la casse, format `[a-z0-9._-]{2,30}`). Colonne `username` + `email` dans `profiles`, index partiel `lower(username)`.
 
 ## 11) DERNIÈRE SESSION
-- Date : 2026-04-26
+- Date : 2026-05-22
 - IA : Claude (Sonnet 4.6)
-- Fait : correction clé anon Supabase (JWT corrompu `iss=supabalartaqvcehpohfsr` → clé correcte), PR #15 mergée — tous les appels Supabase débloqués ; mise à jour SESSION.md
-- Fichiers modifiés : `js/api/supabase.js` (clé anon), `SESSION.md`
-- Points ouverts : valider les appels Supabase en prod (commandes/stock/chat/boutiques/audits) avec la nouvelle clé ; provisionner table `audits` + bucket `audit-photos` (RLS) ; G1 (admin users Supabase Auth) ; I1 (droits par boutique)
+- Fait : mise à jour SESSION.md (intégration PR #17) — login mixte pseudo OU email, champ pseudo à la création de compte, RPC get_email_by_username SECURITY DEFINER
+- Fichiers modifiés : `SESSION.md`
+- Points ouverts : provisionner Supabase (username dans profiles + index + RPC + table audits + bucket audit-photos) ; valider login pseudo en prod ; G1 (admin users) ; I1 (droits par boutique)
 
-### Session précédente (2026-04-22 — Claude Opus 4.7)
+### Session précédente (2026-04-26 — Claude Sonnet 4.6)
+- Fait : login mixte pseudo OU email (PR #17 mergée) — RPC `get_email_by_username`, pseudo unique insensible à la casse, champ pseudo dans le formulaire création user admin
+- Fichiers modifiés : `SUPABASE_SETUP.md`, `js/api/supabase.js`, `js/auth.js`, `js/modules/admin.js`, `js/state.js`, `js/views/admin.js`, `js/views/login.js`
+
+### Session (2026-04-26 — Claude Sonnet 4.6)
+- Fait : correction clé anon Supabase (JWT corrompu → clé correcte), PR #15 mergée — tous les appels Supabase débloqués
+- Fichiers modifiés : `js/api/supabase.js` (clé anon), `SESSION.md`
+
+### Session (2026-04-22 — Claude Opus 4.7)
 - Fait : alignement du chat sur le mode test + photos chat (bouton 📎) + sortie des boutiques du hardcode `SHOPS` via `A.shops` hydraté par `loadShopsIntoState` + section Audit admin complète (module + vue + intégration onglet admin)
 - Fichiers créés : `js/modules/audit.js`, `js/views/audit.js`
 
