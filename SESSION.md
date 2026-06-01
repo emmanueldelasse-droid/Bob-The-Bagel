@@ -10,17 +10,17 @@
 - Repo : `emmanueldelasse-droid/Bob-The-Bagel`
 - Branche : `main`
 - Déploiement : GitHub Pages
-- Dernière mise à jour : 2026-04-26
+- Dernière mise à jour : 2026-06-01
 - Dernière IA : Claude (Sonnet 4.6)
 
 ## 2) RÉSUMÉ ULTRA-COURT
 - Runtime réel : app statique `index.html` + modules JS ES6, **pas React**.
 - Backend cible : Supabase comme **source de vérité unique**.
-- État réel : commandes, stock et chat sont branchés à Supabase avec hydratation, synchro live et états UI visibles ; en mode test local, commandes, stock ET chat retombent désormais tous en local. Les photos chat sont envoyées (Supabase Storage en prod, data URL en test). Les boutiques sont maintenant hydratées depuis Supabase (`A.shops`) avec fallback local sur le hardcode `SHOPS`. L'accueil reste en accès test direct par boutons Admin/User.
+- État réel : commandes, stock et chat sont branchés à Supabase avec hydratation, synchro live et états UI visibles ; en mode test local, commandes, stock ET chat retombent désormais tous en local. Les photos chat sont envoyées (Supabase Storage en prod, data URL en test). Les boutiques sont maintenant hydratées depuis Supabase (`A.shops`) avec fallback local sur le hardcode `SHOPS`. L'accueil reste en accès test direct par boutons Admin/User. Login mixte pseudo OU email implémenté (PR #17) ; username obligatoire à la création de compte.
 
 ## 3) ÉTAT ACTUEL RÉEL
 ### Ce qui existe déjà
-- Login
+- Login mixte pseudo OU email (RPC `get_email_by_username` côté Supabase à provisionner en prod)
 - Sélection d'espace
 - Vue boutique
 - Vue cuisine
@@ -53,7 +53,7 @@
 
 ### Ce qui reste faux / incomplet
 - Calendrier encore local
-- Admin users faux : création locale alors que login réel = Supabase Auth
+- Admin users : création compte avec username OK (PR #17) mais provisionnement Supabase (colonne `username`, index unique, RPC `get_email_by_username`, GRANT) encore à appliquer en prod (voir `SUPABASE_SETUP.md`)
 - Mot de passe profil/admin non réellement branché
 - Droits par boutique non réellement appliqués côté front
 - Admin ne gère pas encore ajout/suppression boutiques
@@ -100,7 +100,7 @@
 - `js/views/audit.js`
 
 ## 7) PROCHAINE ACTION UNIQUE
-**NEXT_ACTION** : valider les appels Supabase réels en prod (commandes, stock, chat, boutiques) maintenant que la clé anon est correcte (PR #15), puis provisionner la table `audits` et le bucket `audit-photos` (RLS admin/manager).
+**NEXT_ACTION** : provisionner le backend Supabase manquant selon `SUPABASE_SETUP.md` — (1) colonnes `username` + `email` sur `profiles`, index unique `lower(username)`, RPC `get_email_by_username` + GRANT ; (2) table `audits` + bucket `audit-photos` (RLS admin/manager) ; puis valider le login mixte pseudo/email en prod.
 
 ## 8) BLOCAGES / RISQUES
 - App encore hybride = comportement non totalement fiable en multi-utilisateur réel
@@ -123,7 +123,7 @@
 | D1 | Reprendre `state.js` + boot + séparation UI/données métier | DOING | P0 | Noyau propre |
 | E1 | Brancher les commandes réellement sur Supabase | DOING | P0 | Commandes cohérentes boutique/cuisine |
 | F1 | Brancher le stock réellement sur Supabase | DOING | P0 | Stock partagé fiable |
-| G1 | Refaire l'admin utilisateurs avec vrai flux Supabase Auth | TODO | P0 | Création de comptes réellement utilisables |
+| G1 | Refaire l'admin utilisateurs avec vrai flux Supabase Auth | DOING | P0 | Création avec username OK (PR #17) ; provisionnement Supabase encore à faire |
 | H1 | Sortir les boutiques du hardcode `SHOPS` | DOING | P1 | Boutiques dynamiques |
 | I1 | Appliquer les vrais droits par boutique | TODO | P1 | Accès filtrés correctement |
 | J1 | Brancher le chat réellement sur Supabase | DONE | P1 | Messagerie multi-utilisateur réelle |
@@ -134,6 +134,7 @@
 | O1 | Supprimer les faux écrans “finis” | TODO | P1 | Produit plus honnête et plus propre |
 | P1 | Ajouter des états loading/error visibles sur commandes/stock | DONE | P1 | UX plus fiable et moins trompeuse |
 | Q1 | Section audit admin (propreté/stock/équipements/hygiène/service) | DOING | P1 | Manager peut auditer une boutique avec photos + score |
+| R1 | Provisionner Supabase : username/RPC login + table audits + bucket audit-photos | TODO | P0 | Login pseudo en prod + audits persistants |
 
 ## 10) DERNIÈRES DÉCISIONS VALIDÉES
 - Runtime officiel de reprise = app actuelle HTML/JS modulaire
@@ -152,17 +153,23 @@
 - Audits boutique : section dédiée côté admin avec sections prédéfinies (propreté/stock/équipements/hygiène/service), items ok/nok/na + commentaire + photos multiples, photo générale, score OK/KO auto, brouillon ou clôturé. Persistance locale (`A.audits`, clé `au`), upsert Supabase `audits` en prod (fallback silencieux vers local si erreur)
 - Rôle admin = superset du rôle user : au login, l'admin atterrit désormais sur la page `select` comme un user (accès boutiques + cuisine + chat + calendrier via les onglets) et dispose en plus d'un bouton "Panneau admin" rouge sur `select` qui mène à `bAdmin` (bannière, utilisateurs, produits, audit, logs)
 - Audit contextuel : un onglet 🔍 Audit apparaît dans la vue boutique uniquement si l'utilisateur est admin. En contexte "shop" (`A.auditContext = 'shop'`), la liste est filtrée sur `A.selShop`, les filtres inter-boutiques sont masqués et le dropdown boutique de l'édition est remplacé par une puce figée. Le panneau admin garde la vue audit globale (`A.auditContext = 'admin'`) avec filtres + bouton par boutique.
+- Login mixte pseudo OU email (PR #17) : si l'identifiant contient `@` → `signIn` direct ; sinon → RPC `get_email_by_username(pseudo)` (SECURITY DEFINER) pour résoudre l'email puis `signIn`. Le pseudo est unique insensible à la casse via un index partiel `lower(username)` sur `profiles`. Le champ login devient type `text`. L'email reste obligatoire côté Supabase Auth.
+- Création de compte (admin/boss) : accepte `username` (a-z 0-9 . _ - 2-30 chars), inséré dans `profiles.username`. Erreurs spécifiques : pseudo déjà pris vs email déjà pris.
 
 ## 11) DERNIÈRE SESSION
-- Date : 2026-04-26
+- Date : 2026-06-01
 - IA : Claude (Sonnet 4.6)
-- Fait : correction clé anon Supabase (JWT corrompu `iss=supabalartaqvcehpohfsr` → clé correcte), PR #15 mergée — tous les appels Supabase débloqués ; mise à jour SESSION.md
-- Fichiers modifiés : `js/api/supabase.js` (clé anon), `SESSION.md`
-- Points ouverts : valider les appels Supabase en prod (commandes/stock/chat/boutiques/audits) avec la nouvelle clé ; provisionner table `audits` + bucket `audit-photos` (RLS) ; G1 (admin users Supabase Auth) ; I1 (droits par boutique)
+- Fait : mise à jour SESSION.md pour refléter PR #17 (login mixte pseudo/email, username à la création) ; guide système de continuité de session documenté
+- Fichiers modifiés : `SESSION.md`
+- Points ouverts : provisionner le backend Supabase (username/RPC, audits, bucket) selon `SUPABASE_SETUP.md` ; valider login mixte en prod ; G1 ; I1
 
-### Session précédente (2026-04-22 — Claude Opus 4.7)
-- Fait : alignement du chat sur le mode test + photos chat (bouton 📎) + sortie des boutiques du hardcode `SHOPS` via `A.shops` hydraté par `loadShopsIntoState` + section Audit admin complète (module + vue + intégration onglet admin)
-- Fichiers créés : `js/modules/audit.js`, `js/views/audit.js`
+### Session précédente (2026-04-26 — Claude Sonnet 4.6)
+- Fait : login mixte pseudo OU email (PR #17) — `resolveLoginIdentifier`, RPC `get_email_by_username`, champ Pseudo à la création, SUPABASE_SETUP.md mis à jour
+- Fichiers modifiés : `SUPABASE_SETUP.md`, `js/api/supabase.js`, `js/auth.js`, `js/modules/admin.js`, `js/state.js`, `js/views/admin.js`, `js/views/login.js`
+
+### Session 2026-04-26 (SESSION.md uniquement — Claude Sonnet 4.6)
+- Fait : correction clé anon Supabase (PR #15 mergée), mise à jour SESSION.md (PR #16)
+- Fichiers modifiés : `js/api/supabase.js`, `SESSION.md`
 
 ## 12) FORMAT OBLIGATOIRE POUR TOUTE IA
 ### Au démarrage
